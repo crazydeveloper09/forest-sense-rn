@@ -1,0 +1,62 @@
+{
+  "expo": {
+    "name": "Forest Sense",
+    "slug": "forest-sense",
+    "scheme": "forest-sense",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ],
+      "package": "com.crazydev09.forestsense"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-status-bar",
+      "expo-sqlite",
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash_icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#081a14"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Forest Sense używa lokalizacji, aby pokazać pogodę i pobliskie obserwacje grzybów."
+        }
+      ],
+      "expo-web-browser",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-8567373786235618~7228041251",
+          "iosAppId": "ca-app-pub-8567373786235618~2829716962"
+        }
+      ],
+      "expo-asset"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "a38b7e06-42e2-4191-be8c-0deae281fc00"
+      }
+    }
+  }
+}
