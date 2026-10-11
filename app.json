@@ -8,7 +8,16 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.crazydev09.forestsense"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "enabled": true,
+      "url": "https://u.expo.dev/a38b7e06-42e2-4191-be8c-0deae281fc00",
+      "checkAutomatically": "ON_LOAD"
     },
     "android": {
       "adaptiveIcon": {
@@ -43,6 +52,13 @@
           "locationWhenInUsePermission": "Forest Sense używa lokalizacji, aby pokazać pogodę i pobliskie obserwacje grzybów."
         }
       ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Forest Sense używa zdjęć grzybów do rozpoznania gatunku.",
+          "cameraPermission": "Forest Sense używa aparatu, aby zrobić zdjęcie grzyba do rozpoznania."
+        }
+      ],
       "expo-web-browser",
       [
         "react-native-google-mobile-ads",
@@ -58,5 +74,9 @@
         "projectId": "a38b7e06-42e2-4191-be8c-0deae281fc00"
       }
     }
+  },
+  "react-native-google-mobile-ads": {
+    "android_app_id": "ca-app-pub-8567373786235618~7228041251",
+    "ios_app_id": "ca-app-pub-8567373786235618~2829716962"
   }
 }
