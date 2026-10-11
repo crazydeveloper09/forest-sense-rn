@@ -16,6 +16,7 @@
     "@google/genai": "^2.24.0",
     "@noble/ciphers": "^2.4.0",
     "@noble/hashes": "^2.4.0",
+    "ejs": "^7.0.1",
     "expo": "~57.0.26",
     "expo-asset": "~57.0.18",
     "expo-clipboard": "^57.0.2",

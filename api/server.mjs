@@ -30,6 +30,7 @@ import {
 } from "./auth/account-usage.mjs";
 import { accountBilling, userFromRequest } from "./auth/service.mjs";
 import { readJson, readRawBody, sendAppReturnPage, sendJson } from "./http.mjs";
+import { privacyContext, sendView } from "./views.mjs";
 
 const PORT = Number(process.env.PORT || process.env.AI_API_PORT || 8787);
 const MAX_BODY_BYTES = 8 * 1024 * 1024;
@@ -63,6 +64,12 @@ async function handleRequest(request, response) {
   }
 
   const url = new URL(request.url || "/", "http://localhost");
+  if (
+    request.method === "GET" &&
+    (url.pathname === "/privacy" || url.pathname === "/polityka-prywatnosci")
+  ) {
+    return sendView(response, "privacy", privacyContext);
+  }
   if (request.method === "GET" && url.pathname === "/health") {
     return sendJson(response, 200, {
       ok: true,

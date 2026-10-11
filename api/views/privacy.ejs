@@ -1,0 +1,191 @@
+<%- include('partials/document-start', {
+  title: 'Polityka prywatności',
+  description: 'Polityka prywatności i klauzula informacyjna RODO aplikacji Forest Sense.',
+  appName,
+  updatedAt
+}) %>
+
+<nav aria-label="Spis treści">
+  <strong>Na tej stronie</strong>
+  <ol>
+    <li><a href="#administrator">Administrator</a></li>
+    <li><a href="#dane">Jakie dane przetwarzamy</a></li>
+    <li><a href="#cele">Cele i podstawy prawne</a></li>
+    <li><a href="#odbiorcy">Odbiorcy i przekazanie poza EOG</a></li>
+    <li><a href="#okres">Okres przechowywania</a></li>
+    <li><a href="#prawa">Prawa osoby</a></li>
+    <li><a href="#rodo">Klauzula informacyjna RODO</a></li>
+  </ol>
+</nav>
+
+<section id="administrator">
+  <h2>1. Administrator</h2>
+  <p>
+    Administratorem danych osobowych użytkowników aplikacji <%= appName %> jest <%= controllerName %>.
+    W sprawach danych osobowych napisz na
+    <a href="mailto:<%= contactEmail %>"><%= contactEmail %></a>.
+  </p>
+  <p>
+    Ta strona opisuje aplikację mobilną <%= appName %> na Androida i iOS oraz powiązane API.
+    Aplikacja pomaga rozpoznać grzyba ze zdjęcia, zobaczyć pogodę i warunki na mapie oraz — po założeniu konta — synchronizować obserwacje.
+  </p>
+</section>
+
+<section id="dane">
+  <h2>2. Jakie dane przetwarzamy</h2>
+
+  <h3>Konto</h3>
+  <p>Założenie konta jest dobrowolne. Przy rejestracji i logowaniu przetwarzamy:</p>
+  <ul>
+    <li>skrót SHA-256 znormalizowanego adresu e-mail, używany tylko do odnalezienia konta; jawny adres nie jest zapisywany w bazie,</li>
+    <li>szyfrogram adresu e-mail i nazwy wyświetlanej, zaszyfrowany na Twoim urządzeniu algorytmem AES-256-GCM; klucz powstaje z hasła i nie trafia na serwer, więc administrator nie odczytuje tych pól,</li>
+    <li>skrót hasła obliczony funkcją scrypt; hasło w postaci jawnej nie jest przechowywane,</li>
+    <li>sekret weryfikacji dwuetapowej, zaszyfrowany na serwerze, ponieważ serwer musi potwierdzić kod,</li>
+    <li>skrót tokenu sesji; sam token jest tylko na urządzeniu.</li>
+  </ul>
+
+  <h3>Obserwacje</h3>
+  <p>
+    Gatunek, notatka, współrzędne i data obserwacji są przed wysłaniem szyfrowane na urządzeniu tym samym kluczem co profil.
+    Serwer przechowuje szyfrogram, identyfikator obserwacji, znacznik czasu i informację, czy wpis został usunięty.
+    Nie potrafi odczytać treści obserwacji.
+  </p>
+
+  <h3>Zdjęcie do rozpoznania</h3>
+  <p>
+    Gdy prosisz o rozpoznanie, aplikacja wysyła zdjęcie (JPEG, PNG albo WebP) do API, a API przekazuje je do modelu Google Gemini.
+    Serwer <%= appName %> nie zapisuje pliku zdjęcia po odesłaniu wyniku. Google przetwarza zdjęcie na zasadach usługi Gemini.
+  </p>
+
+  <h3>Lokalizacja</h3>
+  <p>
+    Lokalizacja jest odczytywana tylko po zgodzie w systemie i służy pogodzie oraz mapie warunków.
+    Współrzędne są wysyłane z urządzenia do Open-Meteo w zapytaniu o prognozę.
+    Współrzędne zapisanej obserwacji zostają na urządzeniu i w zaszyfrowanej synchronizacji.
+    Katalog grzybów iNaturalist dostaje nazwę albo zapytanie o gatunek, bez Twojej lokalizacji i bez danych konta.
+  </p>
+
+  <h3>Identyfikator instalacji</h3>
+  <p>
+    Aplikacja tworzy losowy identyfikator instalacji i trzyma go w bezpiecznej pamięci urządzenia.
+    Służy do limitu darmowych rozpoznań, nagrody za obejrzaną reklamę oraz powiązania subskrypcji Premium z urządzeniem.
+  </p>
+
+  <h3>Płatność</h3>
+  <p>
+    Subskrypcję Premium obsługuje Stripe. Numer karty i dane płatnicze wpisujesz u Stripe, nie na serwerze <%= appName %>.
+    Do naszego API wraca status subskrypcji oraz identyfikator konta i instalacji.
+  </p>
+
+  <h3>Reklamy</h3>
+  <p>
+    W wersji bez Premium aplikacja może pokazać baner i reklamę z nagrodą Google AdMob.
+    Przed reklamami wyświetlany jest formularz zgody Google. Aplikacja prosi o reklamy niepersonalizowane.
+    Obejrzenie reklamy z nagrodą Google potwierdza wywołaniem do naszego API, które zawiera identyfikator potrzebny do doliczenia rozpoznania.
+    Google może przetwarzać identyfikator reklamowy zgodnie z wyborem zapisanym w tym formularzu.
+  </p>
+
+  <h3>Powiadomienia</h3>
+  <p>
+    Użytkownik Premium może dostać lokalne powiadomienie o sprzyjających warunkach do wyjścia na grzyby.
+    Treść powstaje na urządzeniu i nie jest wysyłana na serwer. Powiadomienie wymaga osobnej zgody w systemie.
+  </p>
+
+  <h3>Dane techniczne</h3>
+  <p>
+    Dostawca hostingu API może przetwarzać techniczne dane połączenia, w tym adres IP, w logach potrzebnych do bezpieczeństwa i działania usługi.
+    <%= appName %> nie prowadzi własnej analityki zachowania w aplikacji.
+    Pakiet Androida deklaruje uprawnienie do mikrofonu, ale ta wersja aplikacji nie nagrywa dźwięku i go nie wysyła.
+  </p>
+</section>
+
+<section id="cele">
+  <h2>3. Cele i podstawy prawne</h2>
+  <ul>
+    <li>konto, rozpoznanie zdjęcia, synchronizacja obserwacji i subskrypcja Premium — art. 6 ust. 1 lit. b RODO, bo są potrzebne do świadczenia funkcji, o którą prosisz,</li>
+    <li>lokalizacja i powiadomienia — art. 6 ust. 1 lit. a RODO, na podstawie zgody udzielonej w systemie; zgodę cofasz w ustawieniach telefonu,</li>
+    <li>reklamy — art. 6 ust. 1 lit. a RODO, na podstawie wyboru w formularzu zgody Google,</li>
+    <li>ograniczenie prób logowania, limit rozpoznań i utrzymanie działania API — art. 6 ust. 1 lit. f RODO; prawnie uzasadnionym interesem jest bezpieczeństwo kont i ochrona usługi przed nadużyciem,</li>
+    <li>obowiązki rozliczeniowe, w zakresie który dotyczy administratora — art. 6 ust. 1 lit. c RODO. Dane karty przetwarza Stripe jako odrębny administrator.</li>
+  </ul>
+</section>
+
+<section id="odbiorcy">
+  <h2>4. Odbiorcy i przekazanie poza EOG</h2>
+  <p>Dane trafiają tylko do podmiotów, które biorą udział w danej funkcji:</p>
+  <ul>
+    <li>Google Gemini — zdjęcie przesłane do rozpoznania,</li>
+    <li>Google AdMob — wyświetlenie reklamy i potwierdzenie nagrody,</li>
+    <li>Stripe — płatność i status subskrypcji,</li>
+    <li>Open-Meteo — współrzędne w zapytaniu o pogodę, wysyłane z urządzenia,</li>
+    <li>iNaturalist — zapytanie o gatunek, bez konta i bez lokalizacji,</li>
+    <li>dostawca bazy MongoDB i hostingu API — konto oraz szyfrogramy profilu i obserwacji.</li>
+  </ul>
+  <p>
+    Google i Stripe mogą przetwarzać dane poza Europejskim Obszarem Gospodarczym.
+    Podstawą takiego przekazania są standardowe klauzule umowne albo decyzja Komisji Europejskiej stwierdzająca odpowiedni stopień ochrony.
+    Open-Meteo otrzymuje współrzędne z urządzenia w celu odpowiedzi na zapytanie o prognozę.
+  </p>
+</section>
+
+<section id="okres">
+  <h2>5. Okres przechowywania</h2>
+  <ul>
+    <li>sesja logowania — 30 dni albo do wylogowania,</li>
+    <li>kod weryfikacji dwuetapowej — do 5 minut,</li>
+    <li>zdjęcie — nie jest przechowywane przez API po odesłaniu wyniku,</li>
+    <li>konto, szyfrogram profilu i szyfrogramy obserwacji — do usunięcia konta albo danej obserwacji,</li>
+    <li>licznik nieudanych logowań — tylko w pamięci serwera, do 15 minut,</li>
+    <li>dane rozliczeniowe — przez okres wymagany przepisami o rachunkowości, o ile taki obowiązek dotyczy administratora.</li>
+  </ul>
+  <p>
+    Usunięcie obserwacji w aplikacji oznacza, że przestaje być pokazywana i jest oznaczona jako usunięta.
+    Żeby usunąć konto i powiązane szyfrogramy z bazy, napisz na adres administratora.
+  </p>
+</section>
+
+<section id="prawa">
+  <h2>6. Prawa i dobrowolność</h2>
+  <p>Przysługuje Ci prawo do:</p>
+  <ul>
+    <li>dostępu do danych i otrzymania ich kopii,</li>
+    <li>sprostowania,</li>
+    <li>usunięcia,</li>
+    <li>ograniczenia przetwarzania,</li>
+    <li>przeniesienia danych,</li>
+    <li>wniesienia sprzeciwu wobec przetwarzania opartego na uzasadnionym interesie,</li>
+    <li>cofnięcia zgody w dowolnym momencie, bez wpływu na zgodność z prawem przetwarzania sprzed cofnięcia.</li>
+  </ul>
+  <p>
+    Wniosek wyślij na <a href="mailto:<%= contactEmail %>"><%= contactEmail %></a>.
+    Część danych profilu i obserwacji jest zaszyfrowana kluczem z Twojego hasła, więc ich treść odczytasz w aplikacji, a nie z kopii bazy administratora.
+    Masz też prawo złożyć skargę do Prezesa Urzędu Ochrony Danych Osobowych, ul. Stawki 2, 00-193 Warszawa, <a href="https://uodo.gov.pl">uodo.gov.pl</a>.
+  </p>
+  <p>
+    Podanie adresu e-mail i hasła jest dobrowolne, ale bez nich nie założysz konta. Zdjęcie jest potrzebne tylko wtedy, gdy prosisz o rozpoznanie.
+    Brak zgody na lokalizację, powiadomienia albo reklamy wyłącza wyłącznie te funkcje.
+  </p>
+  <p>
+    Rozpoznanie gatunku jest wynikiem modelu i ma charakter pomocniczy. Nie jest decyzją wywołującą skutki prawne ani podobnie istotny skutek w rozumieniu art. 22 RODO.
+    Wynik nie zastępuje wiedzy specjalistycznej. Grzyby mogą być trujące — nie jedz okazu tylko na podstawie aplikacji.
+  </p>
+  <p>Aplikacja nie jest skierowana do dzieci poniżej 16 lat i nie zbieramy świadomie ich danych. Jeśli takie dane nam przekażesz, usuniemy je na żądanie.</p>
+</section>
+
+<section id="rodo" class="clause">
+  <h2>7. Klauzula informacyjna RODO</h2>
+  <p>Zgodnie z art. 13 rozporządzenia Parlamentu Europejskiego i Rady (UE) 2016/679 informujemy:</p>
+  <ol>
+    <li>Administratorem danych jest <%= controllerName %>, kontakt: <a href="mailto:<%= contactEmail %>"><%= contactEmail %></a>.</li>
+    <li>Dane są przetwarzane w celu prowadzenia konta, rozpoznawania zdjęć grzybów, pokazywania pogody i mapy, synchronizacji zaszyfrowanych obserwacji, rozliczenia subskrypcji Premium, wyświetlenia reklam oraz ochrony usługi przed nadużyciem.</li>
+    <li>Podstawą przetwarzania jest art. 6 ust. 1 lit. a, b, c albo f RODO, w zakresie opisanym w polityce powyżej.</li>
+    <li>Odbiorcami są Google (Gemini i AdMob), Stripe, Open-Meteo, iNaturalist oraz dostawca bazy danych i hostingu API — każdy tylko w zakresie swojej funkcji.</li>
+    <li>Google i Stripe mogą przetwarzać dane poza EOG na podstawie standardowych klauzul umownych albo decyzji o adekwatności.</li>
+    <li>Dane konta i obserwacji przechowujemy do czasu ich usunięcia, sesję przez 30 dni, kod dwuetapowy do 5 minut, a zdjęcia nie zapisujemy po rozpoznaniu. Dane rozliczeniowe przechowuje się przez okres wymagany przepisami.</li>
+    <li>Przysługuje Ci dostęp, sprostowanie, usunięcie, ograniczenie, przeniesienie, sprzeciw i cofnięcie zgody oraz skarga do Prezesa UODO.</li>
+    <li>Podanie danych konta jest dobrowolne, lecz niezbędne do jego założenia. Brak zgody na lokalizację, powiadomienia lub reklamy ogranicza tylko te funkcje.</li>
+    <li>Nie podejmujemy wobec Ciebie zautomatyzowanych decyzji wywołujących skutki prawne. Rozpoznanie gatunku jest informacją pomocniczą.</li>
+  </ol>
+</section>
+
+<%- include('partials/document-end', { appName, contactEmail }) %>
