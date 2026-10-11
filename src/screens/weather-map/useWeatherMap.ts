@@ -1,19 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import MapView from 'react-native-maps';
 import * as Location from 'expo-location';
-// import * as Notifications from 'expo-notifications';
+import * as Notifications from 'expo-notifications';
 import { fetchSuitabilityGrid, type MapViewport, type SuitabilityResult } from '../../suitability';
 import { fetchWeatherData, type WeatherData } from '../../weather';
 
-// Notifications.setNotificationHandler({
-//   handleNotification: async () => ({
-//     shouldShowAlert: true,
-//     shouldShowBanner: true,
-//     shouldShowList: true,
-//     shouldPlaySound: false,
-//     shouldSetBadge: false,
-//   }),
-// }/);
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: false,
+    shouldSetBadge: false,
+  }),
+});
 
 export const DEFAULT_VIEWPORT: MapViewport = {
   latitude: 52.2297,
@@ -261,19 +261,19 @@ export function useWeatherMap(isPremium = false) {
     if (lastGoodConditionsKeyRef.current === notificationKey) return;
     lastGoodConditionsKeyRef.current = notificationKey;
 
-    // void Notifications.requestPermissionsAsync().then(({ status }) => {
-    //   if (status !== 'granted') return;
-    //   return Notifications.scheduleNotificationAsync({
-    //     content: {
-    //       title: 'Dobry moment na grzyby',
-    //       body: `Warunki są sprzyjające: ocena ${summary.score}/100, ${weather.temperature.toFixed(1)}°C, wilgotność ${weather.humidity}%`,
-    //     },
-    //     trigger: {
-    //       type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-    //       seconds: 5,
-    //     },
-    //   });
-    // }).catch(() => undefined);
+    void Notifications.requestPermissionsAsync().then(({ status }) => {
+      if (status !== 'granted') return;
+      return Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Dobry moment na grzyby',
+          body: `Warunki są sprzyjające: ocena ${summary.score}/100, ${weather.temperature.toFixed(1)}°C, wilgotność ${weather.humidity}%`,
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: 5,
+        },
+      });
+    }).catch(() => undefined);
   }, [isPremium, summary, weather]);
 
   const potentialSpecies = useMemo(() => findPotentialSpecies(summary), [summary]);
