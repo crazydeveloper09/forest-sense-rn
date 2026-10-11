@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StatusBar as NativeStatusBar, StyleSheet, View } from 'react-native';
 import { initializeGoogleMobileAds } from './src/ads';
 import { AuthProvider, useAuth } from './src/auth/AuthContext';
 import BottomTabs, { type TabKey } from './src/components/BottomTabsBar';
@@ -15,6 +15,8 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import WeatherMapScreen from './src/screens/WeatherMapScreen';
 import { initializeAppStorage } from './src/storage';
 import { startAutoSync } from './src/sync/observations';
+
+const androidStatusBarInset = Platform.OS === 'android' ? NativeStatusBar.currentHeight ?? 0 : 0;
 
 function App() {
   const { user, authVisible } = useAuth();
@@ -73,11 +75,11 @@ function App() {
   return (
     <View style={styles.appShell}>
       <StatusBar style="light" />
-      <View style={styles.screen}>{renderScreen()}</View>
+      <View style={[styles.screen, { paddingTop: androidStatusBarInset }]}>{renderScreen()}</View>
       {!isOnboardingDone && <View style={styles.hiddenBottomSpacer} />}
       {isOnboardingDone && <BottomTabs activeTab={activeTab} onChange={setActiveTab} />}
       {authVisible && (
-        <View style={styles.authOverlay}>
+        <View style={[styles.authOverlay, { paddingTop: androidStatusBarInset }]}>
           <AuthScreen />
         </View>
       )}
