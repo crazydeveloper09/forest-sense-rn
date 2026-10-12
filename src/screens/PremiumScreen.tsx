@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthContext';
 import { createBillingPortal, createPremiumCheckout, getUsage, subscribeUsage, type UsageStatus } from '../billing';
 import PremiumOffer from '../components/premium/PremiumOffer';
 import PremiumPlans from '../components/premium/PremiumPlans';
+import { colors } from '../theme';
 
 export default function PremiumScreen() {
   const { user, openAuth } = useAuth();
@@ -83,7 +84,7 @@ export default function PremiumScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#081a14' },
-  content: { padding: 20, paddingTop: 30, paddingBottom: 32 },
-  title: { color: '#edf9f1', fontSize: 28, fontWeight: '800', marginBottom: 18 },
+  screen: { flex: 1, backgroundColor: colors.background },
+  content: { padding: 20, paddingTop: 20, paddingBottom: 32 },
+  title: { color: colors.text, fontSize: 26, fontWeight: '800', marginBottom: 18 },
 });

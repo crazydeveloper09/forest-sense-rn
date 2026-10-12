@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import type { MushroomCandidate } from '../../ai';
+import { colors } from '../../theme';
 
 type Props = { candidates: MushroomCandidate[] };
 
@@ -19,9 +20,9 @@ export default function RecognitionAlternatives({ candidates }: Props) {
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: '#102d24', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: '#1e4338' },
-  title: { color: '#edf9f1', fontSize: 18, fontWeight: '700', marginBottom: 12 },
-  row: { backgroundColor: '#0d2019', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#1d3d34', marginBottom: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  name: { flex: 1, color: '#f2faf3', fontWeight: '600', paddingRight: 12 },
-  confidence: { color: '#a9ffb0', fontWeight: '800' },
+  card: { gap: 8 },
+  title: { color: colors.muted, fontSize: 12, fontWeight: '700' },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  name: { flex: 1, color: colors.text, fontWeight: '600', paddingRight: 12 },
+  confidence: { color: colors.accent, fontWeight: '800' },
 });

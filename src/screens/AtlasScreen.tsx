@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { remoteCard, toCard } from '../atlas/cards';
+import { remoteCard, toCard, type AtlasCard } from '../atlas/cards';
 import AtlasSpeciesCard from '../components/atlas/AtlasSpeciesCard';
 import AtlasToolbar from '../components/atlas/AtlasToolbar';
+import AtlasSpeciesScreen from './AtlasSpeciesScreen';
 import { fetchFungiCatalog, searchFungi, type INaturalistTaxon } from '../inat';
 import { MUSHROOM_ATLAS, type EdibilityCategory } from '../mushroomAtlas';
+import { colors } from '../theme';
 
 type Filter = 'all' | EdibilityCategory;
 
@@ -18,6 +20,7 @@ export default function AtlasScreen() {
   const [catalogTotal, setCatalogTotal] = useState(0);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<AtlasCard | null>(null);
   const [searching, setSearching] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -111,6 +114,10 @@ export default function AtlasScreen() {
 
   const hasMoreCatalog = query.trim().length < 2 && catalogPage > 0 && catalogPage * 50 < catalogTotal;
 
+  if (selected) {
+    return <AtlasSpeciesScreen card={selected} onBack={() => setSelected(null)} onOpen={setSelected} />;
+  }
+
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <View style={styles.header}>
@@ -144,7 +151,7 @@ export default function AtlasScreen() {
           <Text style={styles.emptyTitle}>Brak wyników</Text>
           <Text style={styles.emptyDescription}>Spróbuj innej nazwy lub wybierz filtr „Wszystkie”.</Text>
         </View>
-      ) : cards.map((card) => <AtlasSpeciesCard key={card.key} card={card} />)}
+      ) : cards.map((card) => <AtlasSpeciesCard key={card.key} card={card} onPress={() => setSelected(card)} />)}
       {hasMoreCatalog && (
         <Pressable style={styles.loadMoreButton} onPress={loadMoreCatalog} disabled={catalogLoading}>
           {catalogLoading ? <ActivityIndicator color="#aef0a0" /> : <Text style={styles.loadMoreText}>Pokaż kolejne 50 gatunków</Text>}
@@ -157,12 +164,12 @@ export default function AtlasScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#081a14' },
-  content: { padding: 20, paddingTop: 30, paddingBottom: 36 },
+  screen: { flex: 1, backgroundColor: colors.background },
+  content: { padding: 20, paddingTop: 20, paddingBottom: 36 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 17 },
   headerText: { flex: 1 },
-  title: { color: '#edf9f1', fontSize: 28, fontWeight: '800' },
-  subtitle: { color: '#9dbfaa', fontSize: 13, marginTop: 4 },
+  title: { color: colors.text, fontSize: 26, fontWeight: '800' },
+  subtitle: { color: colors.muted, fontSize: 13, marginTop: 4 },
   warningCard: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', backgroundColor: '#35271a', borderColor: '#67492c', borderWidth: 1, borderRadius: 16, padding: 14, marginBottom: 14 },
   warningText: { flex: 1, color: '#ffddb0', fontSize: 12, lineHeight: 18 },
   resultCount: { color: '#94b5a1', fontSize: 12, marginBottom: 10 },

@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { colors } from '../../theme';
 
 const levels = [
   { color: '#5ccd7b', label: 'lepsze warunki' },
@@ -20,8 +21,8 @@ export default function SuitabilityLegend() {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, paddingVertical: 12 },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 14 },
   item: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  dot: { width: 10, height: 10, borderRadius: 5 },
-  label: { color: '#b2cbbb', fontSize: 11 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  label: { color: colors.muted, fontSize: 11 },
 });

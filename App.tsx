@@ -41,15 +41,15 @@ function App() {
       .catch(() => {
         if (mounted) setIsPremium(false);
       });
-    if (!user) return () => {
-      mounted = false;
-    };
-    const stopSync = startAutoSync();
     return () => {
       mounted = false;
-      stopSync();
     };
   }, [user]);
+
+  useEffect(() => {
+    if (!user || !isPremium) return;
+    return startAutoSync();
+  }, [user, isPremium]);
 
   const renderScreen = () => {
     if (!isOnboardingDone) {

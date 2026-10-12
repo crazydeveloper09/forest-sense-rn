@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { colors } from '../theme';
 
 type Props = {
   onStart: () => void;
@@ -41,7 +42,7 @@ export default function OnboardingScreen({ onStart }: Props) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#081a14',
+    backgroundColor: colors.background,
     justifyContent: 'center',
   },
   content: {
@@ -57,7 +58,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   title: {
-    color: '#edf9f1',
+    color: colors.text,
     fontSize: 34,
     fontWeight: '900',
     marginBottom: 12,
@@ -84,19 +85,19 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   featureText: {
-    color: '#edf9f1',
+    color: colors.text,
     fontSize: 15,
     lineHeight: 22,
     flex: 1,
   },
   button: {
-    backgroundColor: '#2d8d62',
+    backgroundColor: colors.button,
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: 'center',
   },
   buttonText: {
-    color: '#f8fff9',
+    color: colors.buttonText,
     fontSize: 18,
     fontWeight: '800',
   },

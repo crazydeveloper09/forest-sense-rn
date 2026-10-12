@@ -66,11 +66,12 @@ function normalizeIdentification(value) {
   };
 }
 
-export async function identifyMushroomImage(imageBase64, mimeType) {
-  if (!gemini)
-    throw new Error(
-      "Serwer AI nie ma ustawionego GEMINI_API_KEY. Skonfiguruj klucz po stronie API.",
-    );
+function isCancelledRequest(error) {
+  const status = error?.status ?? error?.code;
+  return status === 499 || status === "CANCELLED";
+}
+
+async function requestIdentification(imageBase64, mimeType) {
 
   const prompt = [
     "You are a cautious visual assistant for mushroom identification. Analyze the supplied photo.",
@@ -100,4 +101,27 @@ export async function identifyMushroomImage(imageBase64, mimeType) {
       "Model AI nie zwrócił wyniku. Spróbuj wybrać wyraźniejsze zdjęcie.",
     );
   return normalizeIdentification(JSON.parse(interaction.output_text));
+}
+
+export async function identifyMushroomImage(imageBase64, mimeType) {
+  if (!gemini)
+    throw new Error(
+      "Serwer AI nie ma ustawionego GEMINI_API_KEY. Skonfiguruj klucz po stronie API.",
+    );
+
+  try {
+    return await requestIdentification(imageBase64, mimeType);
+  } catch (error) {
+    if (!isCancelledRequest(error)) throw error;
+    try {
+      return await requestIdentification(imageBase64, mimeType);
+    } catch (retryError) {
+      if (!isCancelledRequest(retryError)) throw retryError;
+      const cancelled = new Error(
+        "Usługa rozpoznawania przerwała zapytanie. Spróbuj ponownie za chwilę.",
+      );
+      cancelled.status = 499;
+      throw cancelled;
+    }
+  }
 }

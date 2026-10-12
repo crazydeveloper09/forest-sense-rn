@@ -104,7 +104,7 @@ export default function SuitabilityMap({ mapRef, cells, location, historyPins = 
 }
 
 const styles = StyleSheet.create({
-  container: { height: 310, borderRadius: 22, overflow: 'hidden', borderWidth: 1, borderColor: '#1d4338', backgroundColor: '#0c2019' },
+  container: { flex: 1, overflow: 'hidden', backgroundColor: '#0c2019' },
   map: { flex: 1 },
   marker: { width: 40, height: 40, borderRadius: 999, backgroundColor: '#f1f8ee', borderWidth: 2, borderColor: '#1e4c3d', alignItems: 'center', justifyContent: 'center' },
   markerText: { color: '#173b2d', fontWeight: '800', fontSize: 12 },

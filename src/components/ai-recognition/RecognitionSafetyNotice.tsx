@@ -1,13 +1,12 @@
 import { StyleSheet, Text } from 'react-native';
+import { colors } from '../../theme';
 
 export default function RecognitionSafetyNotice() {
   return (
-    <Text style={styles.notice}>
-      AI może się pomylić. Nie jedz grzyba na podstawie wyniku aplikacji. Weryfikuj go z ekspertem — pomyłka może być śmiertelnie niebezpieczna.
-    </Text>
+    <Text style={styles.notice}>Wynik nie zastępuje eksperta. Nie jedz na podstawie zdjęcia.</Text>
   );
 }
 
 const styles = StyleSheet.create({
-  notice: { color: '#ffd0a6', backgroundColor: '#35251a', borderColor: '#68452c', borderWidth: 1, borderRadius: 14, padding: 14, marginTop: 14, fontSize: 12, lineHeight: 18 },
+  notice: { color: colors.warningText, fontSize: 12, lineHeight: 18, textAlign: 'center' },
 });

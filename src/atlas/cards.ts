@@ -12,6 +12,7 @@ export type AtlasCard = {
   attribution?: string;
   license?: string;
   wikipediaUrl?: string;
+  taxonId?: number;
   local: boolean;
 };
 
@@ -27,6 +28,7 @@ export function toCard(species: AtlasSpecies, taxon?: INaturalistTaxon): AtlasCa
     attribution: taxon?.default_photo?.attribution,
     license: taxon?.default_photo?.license_code,
     wikipediaUrl: taxon?.wikipedia_url,
+    taxonId: taxon?.id,
     local: true,
   };
 }
@@ -44,6 +46,7 @@ export function remoteCard(taxon: INaturalistTaxon): AtlasCard {
     attribution: taxon.default_photo?.attribution,
     license: taxon.default_photo?.license_code,
     wikipediaUrl: taxon.wikipedia_url,
+    taxonId: taxon.id,
     local: Boolean(local),
   };
 }

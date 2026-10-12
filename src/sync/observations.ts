@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ApiError, postJson } from '../api/http';
-import { BillingApiError, getUsage } from '../billing';
+import { getCachedUsage } from '../billing';
 import { clearSession, getAccessToken, getCurrentUserId, getDataKey } from '../auth/session';
 import { decryptUtf8, encryptUtf8 } from '../crypto/e2e';
 import {
@@ -98,11 +98,15 @@ async function isOnline(): Promise<boolean> {
   }
 }
 
+function canSyncObservations(): boolean {
+  return Boolean(getAccessToken() && getDataKey() && getCurrentUserId() && getCachedUsage()?.plan === 'premium');
+}
+
 export async function syncObservations(): Promise<void> {
   const token = getAccessToken();
   const dataKey = getDataKey();
   const userId = getCurrentUserId();
-  if (!token || !dataKey || !userId) return;
+  if (!token || !dataKey || !userId || !canSyncObservations()) return;
   if (running) {
     queued = true;
     return;
@@ -162,14 +166,6 @@ export async function syncObservations(): Promise<void> {
       });
     }
     notifyObservations();
-    try {
-      await getUsage();
-    } catch (error) {
-      if (error instanceof BillingApiError && (error.code === 'SESSION_EXPIRED' || error.code === 'AUTH_REQUIRED')) {
-        await clearSession();
-      }
-      throw error;
-    }
     setSyncState({ status: 'idle', lastError: null, lastSyncedAt: new Date().toISOString() });
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
@@ -199,38 +195,41 @@ export async function syncObservations(): Promise<void> {
   }
 }
 
-let scheduled: ReturnType<typeof setTimeout> | null = null;
-
-export function scheduleObservationSync(): void {
-  if (!getAccessToken()) return;
-  if (scheduled) clearTimeout(scheduled);
-  scheduled = setTimeout(() => {
-    scheduled = null;
-    void syncObservations();
-  }, 700);
+function isReachable(network: { isConnected?: boolean; isInternetReachable?: boolean | null }): boolean {
+  return Boolean(network.isConnected) && network.isInternetReachable !== false;
 }
 
 export function startAutoSync(): () => void {
   let stopped = false;
+  let wasOffline = false;
   let subscription: { remove: () => void } | undefined;
-  const tick = () => {
-    if (!stopped) void syncObservations();
+
+  const onNetwork = (network: { isConnected?: boolean; isInternetReachable?: boolean | null }) => {
+    if (stopped) return;
+    if (!isReachable(network)) {
+      wasOffline = true;
+      return;
+    }
+    if (!wasOffline) return;
+    wasOffline = false;
+    void syncObservations().finally(() => {
+      if (!stopped && state.status === 'offline') wasOffline = true;
+    });
   };
-  tick();
-  const timer = setInterval(tick, 15 * 60 * 1000);
+
   void import('expo-network')
-    .then((Network) => {
+    .then(async (Network) => {
       if (stopped) return;
-      subscription = Network.addNetworkStateListener((network) => {
-        if (network.isConnected && network.isInternetReachable !== false) tick();
-      });
+      const current = await Network.getNetworkStateAsync();
+      if (!isReachable(current)) wasOffline = true;
+      if (stopped) return;
+      subscription = Network.addNetworkStateListener(onNetwork);
       if (stopped) subscription.remove();
     })
     .catch(() => undefined);
 
   return () => {
     stopped = true;
-    clearInterval(timer);
     subscription?.remove();
   };
 }

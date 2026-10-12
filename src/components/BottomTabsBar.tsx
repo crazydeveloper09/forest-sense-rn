@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { colors } from '../theme';
 
 export type TabKey = 'map' | 'ai' | 'atlas' | 'history' | 'settings';
 
@@ -33,7 +34,7 @@ export default function BottomTabsBar({ activeTab, onChange }: Props) {
             <MaterialCommunityIcons
               name={tab.icon}
               size={21}
-              color={isActive ? '#aef0a0' : '#83a995'}
+              color={isActive ? colors.accent : '#83a995'}
               style={styles.icon}
             />
             <Text style={[styles.label, isActive && styles.labelActive]}>{tab.label}</Text>
@@ -47,9 +48,9 @@ export default function BottomTabsBar({ activeTab, onChange }: Props) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: '#0d2019',
+    backgroundColor: colors.tabBar,
     borderTopWidth: 1,
-    borderTopColor: '#1d4338',
+    borderTopColor: colors.border,
     paddingHorizontal: 5,
     paddingVertical: 8,
   },
@@ -68,10 +69,10 @@ const styles = StyleSheet.create({
   },
   label: {
     color: '#a2c7b2',
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
   },
   labelActive: {
-    color: '#effcf0',
+    color: colors.accent,
   },
 });

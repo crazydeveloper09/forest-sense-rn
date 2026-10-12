@@ -5,6 +5,7 @@ import HistoryEntry from '../components/history/HistoryEntry';
 import HistoryLocked from '../components/history/HistoryLocked';
 import { getOfflineObservations, subscribeOfflineObservations } from '../storage';
 import type { ObservationRecord } from '../types';
+import { colors } from '../theme';
 
 type Props = { isPremium: boolean };
 
@@ -47,20 +48,20 @@ export default function HistoryScreen({ isPremium }: Props) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#081a14' },
-  content: { padding: 20, paddingTop: 30, paddingBottom: 32 },
-  lockedContent: { padding: 20, paddingTop: 30, paddingBottom: 32, justifyContent: 'center', flexGrow: 1 },
-  title: { color: '#edf9f1', fontSize: 28, fontWeight: '800', marginBottom: 18 },
+  screen: { flex: 1, backgroundColor: colors.background },
+  content: { padding: 20, paddingTop: 20, paddingBottom: 32 },
+  lockedContent: { padding: 20, paddingTop: 20, paddingBottom: 32, justifyContent: 'center', flexGrow: 1 },
+  title: { color: colors.text, fontSize: 26, fontWeight: '800', marginBottom: 18 },
   summaryRow: { flexDirection: 'row', gap: 12, marginBottom: 18 },
   summaryBox: {
     flex: 1,
-    backgroundColor: '#0f251d',
+    backgroundColor: colors.sheet,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#1d3d34',
+    borderColor: colors.border,
     padding: 14,
     alignItems: 'center',
   },
-  summaryValue: { color: '#f3faf4', fontSize: 24, fontWeight: '800' },
-  summaryLabel: { color: '#a8d0b8', fontSize: 12, marginTop: 4 },
+  summaryValue: { color: colors.text, fontSize: 24, fontWeight: '800' },
+  summaryLabel: { color: colors.muted, fontSize: 12, marginTop: 4 },
 });

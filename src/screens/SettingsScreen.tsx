@@ -7,6 +7,7 @@ import SettingsSupportCard from '../components/settings/SettingsSupportCard';
 import { useSyncStatus } from '../sync/observations';
 import PremiumScreen from './PremiumScreen';
 import PrivacyPolicyScreen from './PrivacyPolicyScreen';
+import { colors } from '../theme';
 
 const appPackage = require('../../package.json') as { version?: string };
 const APP_VERSION = appPackage.version ?? 'unknown';
@@ -60,9 +61,9 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#081a14' },
-  content: { padding: 20, paddingTop: 28, paddingBottom: 36 },
-  title: { color: '#edf9f1', fontSize: 30, fontWeight: '800', marginBottom: 8 },
+  screen: { flex: 1, backgroundColor: colors.background },
+  content: { padding: 20, paddingTop: 20, paddingBottom: 36 },
+  title: { color: colors.text, fontSize: 26, fontWeight: '800', marginBottom: 8 },
   inlinePremiumWrapper: { marginBottom: 16 },
   versionCard: {
     backgroundColor: '#0b1f1a',

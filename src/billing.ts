@@ -16,8 +16,11 @@ export type UsageStatus = {
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_AI_API_URL?.replace(/\/$/, '');
 const INSTALLATION_ID_KEY = 'forest-sense-installation-id';
+const USAGE_TTL_MS = 15_000;
 let installationIdPromise: Promise<string> | null = null;
 let latestUsage: UsageStatus | null = null;
+let usageFetchedAt = 0;
+let usageRequest: Promise<UsageStatus> | null = null;
 const usageListeners = new Set<(usage: UsageStatus) => void>();
 
 export function getCachedUsage(): UsageStatus | null {
@@ -31,6 +34,7 @@ export function subscribeUsage(listener: (usage: UsageStatus) => void): () => vo
 
 export function rememberUsage(usage: UsageStatus): UsageStatus {
   latestUsage = usage;
+  usageFetchedAt = Date.now();
   usageListeners.forEach((listener) => listener(usage));
   return usage;
 }
@@ -98,9 +102,19 @@ async function requestApi<T>(path: string, body: Record<string, unknown>): Promi
   return payload;
 }
 
-export async function getUsage(): Promise<UsageStatus> {
-  const installationId = await getInstallationId();
-  return rememberUsage(await requestApi<UsageStatus>('/billing/usage', { installationId }));
+export async function getUsage(options?: { fresh?: boolean }): Promise<UsageStatus> {
+  if (!options?.fresh && latestUsage && Date.now() - usageFetchedAt < USAGE_TTL_MS) return latestUsage;
+  if (!options?.fresh && usageRequest) return usageRequest;
+  const request = (async () => {
+    const installationId = await getInstallationId();
+    return rememberUsage(await requestApi<UsageStatus>('/billing/usage', { installationId }));
+  })();
+  if (!options?.fresh) usageRequest = request;
+  try {
+    return await request;
+  } finally {
+    if (usageRequest === request) usageRequest = null;
+  }
 }
 
 export async function createRewardRequest(): Promise<{ customData: string; userId: string }> {
@@ -115,12 +129,12 @@ export async function claimDevelopmentReward(customData: string): Promise<UsageS
 
 export async function waitForRewardCredit(timeoutMs = 25_000): Promise<UsageStatus> {
   const startedAt = Date.now();
-  let latestUsage = await getUsage();
-  while (Date.now() - startedAt < timeoutMs && latestUsage.rewardCredits === 0) {
+  let currentUsage = await getUsage({ fresh: true });
+  while (Date.now() - startedAt < timeoutMs && currentUsage.rewardCredits === 0) {
     await new Promise((resolve) => setTimeout(resolve, 1_500));
-    latestUsage = await getUsage();
+    currentUsage = await getUsage({ fresh: true });
   }
-  return latestUsage;
+  return currentUsage;
 }
 
 export async function createPremiumCheckout(): Promise<{ checkoutUrl: string }> {

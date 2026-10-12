@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import type { SuitabilityResult } from '../../suitability';
 import type { PotentialSpecies, SuitabilitySummary } from '../../screens/weather-map/useWeatherMap';
+import { colors } from '../../theme';
 
 type Props = {
   summary: SuitabilitySummary | null;
@@ -20,13 +21,8 @@ type Props = {
 export default function SuitabilityPanel({ summary, potentialSpecies, suitability, isPremium = false, premiumInsight, loading, error }: Props) {
   return (
     <View style={styles.panel}>
-      <View style={styles.header}>
-        <View style={styles.headerInfo}>
-          <Text style={styles.title}>Ocena warunków środowiskowych</Text>
-          <Text style={styles.hint}>Pogoda, wilgotność gleby, tekstura gleby i nachylenie terenu</Text>
-        </View>
-        {summary && <Text style={styles.score}>{summary.score}%</Text>}
-      </View>
+      <Text style={styles.title}>Szczegóły obszaru</Text>
+      <Text style={styles.hint}>Wilgotność gleby, tekstura i nachylenie terenu</Text>
 
       {error && !suitability ? (
         <Text style={styles.empty}>Nie udało się pobrać danych środowiskowych. Sprawdź połączenie i spróbuj odświeżyć.</Text>
@@ -49,7 +45,7 @@ export default function SuitabilityPanel({ summary, potentialSpecies, suitabilit
           </Text>
           {isPremium && premiumInsight ? (
             <View style={styles.premiumSummary}>
-              <Text style={styles.premiumSummaryTitle}>Premium hotspots</Text>
+              <Text style={styles.premiumSummaryTitle}>Najlepsze strefy</Text>
               {premiumInsight.hotspots.map((hotspot, index) => (
                 <View key={`${hotspot.label}-${hotspot.score}`} style={styles.hotspotLine}>
                   <Text style={styles.hotspotLabel}>{index + 1}. {hotspot.label}</Text>
@@ -88,29 +84,26 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
-  panel: { backgroundColor: '#102d24', borderRadius: 18, borderWidth: 1, borderColor: '#1d4338', padding: 16 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-  headerInfo: { flex: 1, paddingRight: 10 },
-  title: { color: '#f2f9f3', fontSize: 17, fontWeight: '800' },
-  hint: { color: '#94b5a1', fontSize: 12, marginTop: 5, marginBottom: 12 },
-  score: { color: '#aef0a0', fontSize: 23, fontWeight: '900' },
+  panel: { marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: colors.border },
+  title: { color: colors.text, fontSize: 16, fontWeight: '800' },
+  hint: { color: colors.muted, fontSize: 12, marginTop: 4, marginBottom: 12 },
   metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
-  metric: { width: '48%', backgroundColor: '#0d2019', borderRadius: 12, borderWidth: 1, borderColor: '#1a3b31', padding: 11 },
-  metricLabel: { color: '#9dbfaa', fontSize: 11, marginBottom: 5 },
-  metricValue: { color: '#f3faf4', fontSize: 15, fontWeight: '800', textTransform: 'capitalize' },
+  metric: { width: '48%', backgroundColor: colors.inset, borderRadius: 12, borderWidth: 1, borderColor: colors.border, padding: 11 },
+  metricLabel: { color: colors.muted, fontSize: 11, marginBottom: 5 },
+  metricValue: { color: colors.text, fontSize: 15, fontWeight: '800', textTransform: 'capitalize' },
   dataQuality: { color: '#91b29d', fontSize: 11, lineHeight: 16, marginBottom: 14 },
-  premiumSummary: { backgroundColor: '#122c24', borderRadius: 14, borderWidth: 1, borderColor: '#2d8d62', padding: 12, marginBottom: 12 },
-  premiumSummaryTitle: { color: '#aef0a0', fontSize: 11, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 },
+  premiumSummary: { backgroundColor: colors.inset, borderRadius: 14, borderWidth: 1, borderColor: colors.button, padding: 12, marginBottom: 12 },
+  premiumSummaryTitle: { color: colors.accent, fontSize: 11, fontWeight: '800', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 8 },
   hotspotLine: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
-  hotspotLabel: { color: '#edf9f1', fontSize: 12, fontWeight: '700' },
-  hotspotScore: { color: '#aef0a0', fontSize: 12, fontWeight: '800' },
+  hotspotLabel: { color: colors.text, fontSize: 12, fontWeight: '700' },
+  hotspotScore: { color: colors.accent, fontSize: 12, fontWeight: '800' },
   premiumSummaryText: { color: '#dfeae3', fontSize: 12, lineHeight: 18, marginTop: 8 },
-  subsectionTitle: { color: '#e9f6ec', fontSize: 14, fontWeight: '800', marginBottom: 4 },
+  subsectionTitle: { color: colors.text, fontSize: 14, fontWeight: '800', marginBottom: 4 },
   empty: { color: '#bfd9c9', fontSize: 13, lineHeight: 20, marginTop: 6 },
-  speciesRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#1d4338' },
+  speciesRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderTopWidth: 1, borderTopColor: colors.border },
   speciesInfo: { flex: 1, paddingRight: 12 },
-  speciesName: { color: '#eff9f1', fontSize: 14, fontWeight: '700' },
-  speciesHabitat: { color: '#9dbfaa', fontSize: 11, marginTop: 4 },
-  speciesBadge: { color: '#aef0a0', fontSize: 13, fontWeight: '800' },
+  speciesName: { color: colors.text, fontSize: 14, fontWeight: '700' },
+  speciesHabitat: { color: colors.muted, fontSize: 11, marginTop: 4 },
+  speciesBadge: { color: colors.accent, fontSize: 13, fontWeight: '800' },
   disclaimer: { color: '#86a391', fontSize: 11, lineHeight: 17, marginTop: 12 },
 });

@@ -1,5 +1,4 @@
 import { getObservations, initDatabase, addObservation, subscribeObservations } from './db';
-import { scheduleObservationSync } from './sync/observations';
 import type { ObservationRecord, SubscriptionTier } from './types';
 
 export function initializeAppStorage(): void {
@@ -22,7 +21,6 @@ export function saveObservation(
   longitude?: number,
 ): void {
   addObservation(name, probability, notes, latitude, longitude);
-  scheduleObservationSync();
 }
 
 export function getSubscriptionTier(): SubscriptionTier {

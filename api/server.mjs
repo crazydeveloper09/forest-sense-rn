@@ -234,6 +234,13 @@ function handleError(error, request, response) {
       error: "Nie udało się zweryfikować nagrody AdMob.",
     });
   }
+  if (error?.status === 499) {
+    console.warn("Gemini cancelled the identification request; recognition quota was refunded.");
+    return sendJson(response, 503, {
+      error: "Usługa rozpoznawania przerwała zapytanie. Spróbuj ponownie za chwilę.",
+      code: "PROVIDER_CANCELLED",
+    });
+  }
   if (error?.status === 429) {
     console.warn("Gemini rate limit reached; recognition quota was refunded.");
     return sendJson(response, 429, {

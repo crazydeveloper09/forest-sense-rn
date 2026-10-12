@@ -1,51 +1,154 @@
-import { ScrollView, StyleSheet, Text } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import RecognitionAlternatives from '../components/ai-recognition/RecognitionAlternatives';
 import RecognitionPhotoPicker from '../components/ai-recognition/RecognitionPhotoPicker';
 import RecognitionQuotaPanel from '../components/ai-recognition/RecognitionQuotaPanel';
 import RecognitionResultCard from '../components/ai-recognition/RecognitionResultCard';
 import RecognitionSafetyNotice from '../components/ai-recognition/RecognitionSafetyNotice';
+import { colors } from '../theme';
 import { useAIRecognition } from './ai-recognition/useAIRecognition';
 
 type Props = { adsEnabled: boolean; isPremium: boolean };
 
+const COMPACT_PHOTO = 220;
+
 export default function AIRecognitionScreen({ adsEnabled, isPremium }: Props) {
   const { state, actions } = useAIRecognition(adsEnabled, isPremium);
+  const hasPhoto = Boolean(state.imageUri);
+  const showResult = Boolean(state.result || state.isAnalyzing || state.analysisError);
+  const [expandedPhoto, setExpandedPhoto] = useState(0);
+  const photoHeight = useRef(new Animated.Value(0)).current;
+  const resultProgress = useRef(new Animated.Value(0)).current;
+  const actionsLocked = state.isAnalyzing || state.usageLoading || Boolean(state.usage && !state.usage.canRecognize);
+
+  useEffect(() => {
+    if (!expandedPhoto) return;
+    Animated.timing(photoHeight, {
+      toValue: hasPhoto ? COMPACT_PHOTO : expandedPhoto,
+      duration: 420,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  }, [expandedPhoto, hasPhoto, photoHeight]);
+
+  useEffect(() => {
+    Animated.timing(resultProgress, {
+      toValue: showResult ? 1 : 0,
+      duration: 380,
+      delay: showResult ? 120 : 0,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [resultProgress, showResult]);
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Rozpoznanie AI</Text>
-      <RecognitionQuotaPanel
-        usage={state.usage}
-        loading={state.usageLoading}
-        adLoading={state.adLoading}
-        adsEnabled={adsEnabled}
-        onWatchAd={actions.watchRewardedAd}
-      />
-      <RecognitionPhotoPicker
-        imageUri={state.imageUri}
-        sourceMode={state.sourceMode}
-        disabled={state.isAnalyzing || state.usageLoading || Boolean(state.usage && !state.usage.canRecognize)}
-        onCamera={actions.openCamera}
-        onGallery={actions.openGallery}
-      />
-      <RecognitionResultCard
-        result={state.result}
-        isAnalyzing={state.isAnalyzing}
-        error={state.analysisError}
-        sourceMode={state.sourceMode}
-        locationLabel={state.locationLabel}
-        saved={state.saved}
-        isPremium={isPremium}
-        onSave={actions.saveCurrentObservation}
-      />
-      <RecognitionAlternatives candidates={state.result?.alternatives ?? []} />
-      <RecognitionSafetyNotice />
-    </ScrollView>
+    <View style={styles.screen}>
+      <View style={styles.topBar}>
+        <RecognitionQuotaPanel
+          usage={state.usage}
+          loading={state.usageLoading}
+          adLoading={state.adLoading}
+          adsEnabled={adsEnabled}
+          onWatchAd={actions.watchRewardedAd}
+        />
+        <Pressable style={styles.cameraLink} onPress={actions.openCamera} disabled={actionsLocked} accessibilityRole="button">
+          <MaterialCommunityIcons name="camera-outline" size={18} color={colors.text} />
+          <Text style={styles.cameraLinkText}>Aparat</Text>
+        </Pressable>
+      </View>
+      <View
+        style={styles.stage}
+        onLayout={(event) => {
+          if (expandedPhoto || hasPhoto) return;
+          const next = event.nativeEvent.layout.height;
+          if (next > 0) {
+            photoHeight.setValue(next);
+            setExpandedPhoto(next);
+          }
+        }}
+      >
+        <Animated.View style={[styles.hero, expandedPhoto ? { height: photoHeight } : styles.heroFlex]}>
+          <RecognitionPhotoPicker imageUri={state.imageUri} />
+        </Animated.View>
+        <Animated.View
+          pointerEvents={showResult ? 'auto' : 'none'}
+          style={[
+            showResult ? styles.result : styles.resultHidden,
+            {
+              opacity: resultProgress,
+              transform: [{
+                translateY: resultProgress.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [28, 0],
+                }),
+              }],
+            },
+          ]}
+        >
+          <ScrollView style={styles.resultScroll} contentContainerStyle={styles.resultContent} keyboardShouldPersistTaps="handled">
+            <RecognitionResultCard
+              result={state.result}
+              isAnalyzing={state.isAnalyzing}
+              error={state.analysisError}
+              sourceMode={state.sourceMode}
+              locationLabel={state.locationLabel}
+              saved={state.saved}
+              isPremium={isPremium}
+              onSave={actions.saveCurrentObservation}
+            />
+            <RecognitionAlternatives candidates={state.result?.alternatives ?? []} />
+            {showResult ? dockNode() : null}
+          </ScrollView>
+        </Animated.View>
+      </View>
+      {showResult ? null : dockNode()}
+    </View>
   );
+
+  function dockNode() {
+    return (
+      <View style={[styles.dock, showResult && styles.dockInResult]}>
+        <View style={styles.actions}>
+          <Pressable style={styles.primaryButton} onPress={actions.openCamera} disabled={actionsLocked}>
+            <MaterialCommunityIcons name="camera-outline" size={18} color={colors.buttonText} />
+            <Text style={styles.primaryText}>Zrób zdjęcie</Text>
+          </Pressable>
+          <Pressable style={styles.secondaryButton} onPress={actions.openGallery} disabled={actionsLocked}>
+            <MaterialCommunityIcons name="image-outline" size={18} color={colors.text} />
+            <Text style={styles.secondaryText}>Galeria</Text>
+          </Pressable>
+        </View>
+        <RecognitionSafetyNotice />
+      </View>
+    );
+  }
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#081a14' },
-  content: { padding: 20, paddingTop: 30, paddingBottom: 28 },
-  title: { color: '#edf9f1', fontSize: 28, fontWeight: '800', marginBottom: 18 },
+  screen: { flex: 1, overflow: 'hidden', backgroundColor: colors.background },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: colors.background,
+  },
+  cameraLink: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  cameraLinkText: { color: colors.text, fontWeight: '700' },
+  stage: { flex: 1, minHeight: 0, overflow: 'hidden' },
+  hero: { overflow: 'hidden' },
+  heroFlex: { flex: 1 },
+  result: { flex: 1, minHeight: 0 },
+  resultHidden: { height: 0, overflow: 'hidden' },
+  resultScroll: { flex: 1 },
+  resultContent: { gap: 12, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 },
+  dock: { flexShrink: 0, gap: 12, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 14, backgroundColor: colors.background },
+  dockInResult: { paddingHorizontal: 0, paddingBottom: 4 },
+  actions: { flexDirection: 'row', gap: 10 },
+  primaryButton: { flex: 1, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.button, borderRadius: 12, paddingVertical: 13 },
+  primaryText: { color: colors.buttonText, fontWeight: '800' },
+  secondaryButton: { flex: 1, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', borderRadius: 12, paddingVertical: 13, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card },
+  secondaryText: { color: colors.text, fontWeight: '700' },
 });

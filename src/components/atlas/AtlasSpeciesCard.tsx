@@ -1,4 +1,4 @@
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { categoryLabel } from '../../mushroomAtlas';
 import type { AtlasCard } from '../../atlas/cards';
@@ -9,9 +9,9 @@ function CategoryBadge({ category }: { category: AtlasCard['category'] }) {
   return <Text style={[styles.categoryBadge, style]}>{label}</Text>;
 }
 
-export default function AtlasSpeciesCard({ card }: { card: AtlasCard }) {
+export default function AtlasSpeciesCard({ card, onPress }: { card: AtlasCard; onPress?: () => void }) {
   return (
-    <View style={styles.speciesCard}>
+    <Pressable style={styles.speciesCard} onPress={onPress} accessibilityRole="button" accessibilityLabel={`Więcej o ${card.name}`}>
       {card.photoUrl ? (
         <Image source={{ uri: card.photoUrl }} style={styles.speciesImage} resizeMode="cover" />
       ) : (
@@ -31,8 +31,9 @@ export default function AtlasSpeciesCard({ card }: { card: AtlasCard }) {
         </View>
         {card.attribution ? <Text style={styles.attribution}>Zdjęcie: {card.attribution}{card.license ? ` · licencja ${card.license}` : ''} · iNaturalist</Text> : null}
         {!card.local ? <Text style={styles.source}>Dane taksonomiczne: iNaturalist{card.wikipediaUrl ? ' · dostępne hasło encyklopedyczne' : ''}</Text> : null}
+        <Text style={styles.more}>Więcej o gatunku</Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -54,4 +55,5 @@ const styles = StyleSheet.create({
   habitat: { flex: 1, color: '#a9c9b5', fontSize: 12 },
   attribution: { color: '#829e8e', fontSize: 9, lineHeight: 14, marginTop: 10 },
   source: { color: '#83ad91', fontSize: 10, marginTop: 5 },
+  more: { color: '#aef0a0', fontSize: 12, fontWeight: '800', marginTop: 12 },
 });
