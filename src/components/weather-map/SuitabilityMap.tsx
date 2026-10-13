@@ -1,6 +1,6 @@
 import { Fragment } from 'react';
 import MapView, { Circle, Marker, Polygon } from 'react-native-maps';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import type { MapViewport, SuitabilityCell } from '../../suitability';
 
 export type HistoryPin = {
@@ -17,6 +17,7 @@ export type Props = {
   historyPins?: HistoryPin[];
   isPremium?: boolean;
   onRegionChangeComplete: (viewport: MapViewport) => void;
+  onMapReady?: () => void;
 };
 
 export function heatColor(score: number) {
@@ -41,7 +42,7 @@ function getCellCenter(cell: SuitabilityCell) {
   };
 }
 
-export default function SuitabilityMap({ mapRef, cells, location, historyPins = [], isPremium = false, onRegionChangeComplete }: Props) {
+export default function SuitabilityMap({ mapRef, cells, location, historyPins = [], isPremium = false, onRegionChangeComplete, onMapReady }: Props) {
   const premiumHotspots = isPremium ? [...cells].sort((left, right) => right.score - left.score).slice(0, 3) : [];
 
   return (
@@ -49,8 +50,9 @@ export default function SuitabilityMap({ mapRef, cells, location, historyPins = 
       <MapView
         ref={mapRef}
         style={styles.map}
-        mapType="terrain"
+        mapType={Platform.OS === 'ios' ? 'mutedStandard' : 'terrain'}
         initialRegion={{ latitude: 52.2297, longitude: 21.0122, latitudeDelta: 0.09, longitudeDelta: 0.09 }}
+        onMapReady={onMapReady}
         onRegionChangeComplete={onRegionChangeComplete}
       >
         {cells.map((cell) => (

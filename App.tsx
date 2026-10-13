@@ -10,7 +10,6 @@ import AtlasScreen from './src/screens/AtlasScreen';
 import AuthScreen from './src/screens/AuthScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import MapScreen from './src/screens/MapScreen';
-import OnboardingScreen from './src/screens/OnboardingScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import WeatherMapScreen from './src/screens/WeatherMapScreen';
 import { initializeAppStorage } from './src/storage';
@@ -21,7 +20,6 @@ const androidStatusBarInset = Platform.OS === 'android' ? NativeStatusBar.curren
 function App() {
   const { user, authVisible } = useAuth();
   const [activeTab, setActiveTab] = useState<TabKey>('map');
-  const [isOnboardingDone, setIsOnboardingDone] = useState(false);
   const [adsAllowed, setAdsAllowed] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
 
@@ -52,10 +50,6 @@ function App() {
   }, [user, isPremium]);
 
   const renderScreen = () => {
-    if (!isOnboardingDone) {
-      return <OnboardingScreen onStart={() => setIsOnboardingDone(true)} />;
-    }
-
     switch (activeTab) {
       case 'map':
         return <WeatherMapScreen adsEnabled={adsAllowed} isPremium={isPremium} />;
@@ -76,8 +70,7 @@ function App() {
     <View style={styles.appShell}>
       <StatusBar style="light" />
       <View style={[styles.screen, { paddingTop: androidStatusBarInset }]}>{renderScreen()}</View>
-      {!isOnboardingDone && <View style={styles.hiddenBottomSpacer} />}
-      {isOnboardingDone && <BottomTabs activeTab={activeTab} onChange={setActiveTab} />}
+      <BottomTabs activeTab={activeTab} onChange={setActiveTab} />
       {authVisible && (
         <View style={[styles.authOverlay, { paddingTop: androidStatusBarInset }]}>
           <AuthScreen />
@@ -112,9 +105,6 @@ const styles = StyleSheet.create({
     color: '#bfd9c9',
     fontSize: 15,
     lineHeight: 22,
-  },
-  hiddenBottomSpacer: {
-    height: 0,
   },
   authOverlay: {
     position: 'absolute',

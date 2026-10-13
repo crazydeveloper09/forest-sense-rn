@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Constants from 'expo-constants';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../auth/AuthContext';
 import { getUsage, subscribeUsage, type UsageStatus } from '../billing';
@@ -11,6 +12,7 @@ import { getOfflineObservations, subscribeOfflineObservations } from '../storage
 import { colors } from '../theme';
 import { useWeatherMap } from './weather-map/useWeatherMap';
 
+const iosOverlayInset = Platform.OS === 'ios' ? (Constants.statusBarHeight || 47) : 0;
 const NativeBannerAd = lazy(() => import('../components/NativeBannerAd'));
 const BANNER_AD_UNIT_ID = __DEV__
   ? Platform.OS === 'ios'
@@ -45,6 +47,7 @@ export default function WeatherMapScreen({ adsEnabled, isPremium }: Props) {
     potentialSpecies,
     refreshCurrentViewport,
     handleRegionChangeComplete,
+    handleMapReady,
   } = useWeatherMap(isPremium);
 
   useEffect(() => {
@@ -95,8 +98,9 @@ export default function WeatherMapScreen({ adsEnabled, isPremium }: Props) {
           historyPins={historyPins}
           isPremium={isPremium}
           onRegionChangeComplete={handleRegionChangeComplete}
+          onMapReady={handleMapReady}
         />
-        <View style={styles.overlay} pointerEvents="box-none">
+        <View style={[styles.overlay, { top: 12 + iosOverlayInset }]} pointerEvents="box-none">
           <View>
             <Text style={styles.chip}>{conditionLabel(score)}</Text>
             <Text style={styles.score}>{score ?? '—'}</Text>

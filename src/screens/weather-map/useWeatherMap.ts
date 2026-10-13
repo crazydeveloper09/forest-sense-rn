@@ -74,6 +74,53 @@ function findPotentialSpecies(summary: SuitabilitySummary | null): PotentialSpec
   return candidates.filter((candidate) => candidate.eligible);
 }
 
+function readViewport(region: Partial<MapViewport> | null | undefined): MapViewport | null {
+  const latitude = Number(region?.latitude);
+  const longitude = Number(region?.longitude);
+  const latitudeDelta = Number(region?.latitudeDelta);
+  const longitudeDelta = Number(region?.longitudeDelta);
+  if (![latitude, longitude, latitudeDelta, longitudeDelta].every(Number.isFinite)) return null;
+  if (Math.abs(latitude) > 85 || Math.abs(longitude) > 180) return null;
+  if (latitudeDelta <= 0 || longitudeDelta <= 0) return null;
+  return { latitude, longitude, latitudeDelta, longitudeDelta };
+}
+
+function viewportFromBounds(bounds: {
+  northEast?: { latitude?: number; longitude?: number };
+  southWest?: { latitude?: number; longitude?: number };
+} | null | undefined): MapViewport | null {
+  const north = Number(bounds?.northEast?.latitude);
+  const east = Number(bounds?.northEast?.longitude);
+  const south = Number(bounds?.southWest?.latitude);
+  const west = Number(bounds?.southWest?.longitude);
+  if (![north, east, south, west].every(Number.isFinite)) return null;
+  let longitudeDelta = Math.abs(east - west);
+  if (longitudeDelta > 180) longitudeDelta = 360 - longitudeDelta;
+  const latitudeDelta = Math.abs(north - south);
+  if (latitudeDelta > 40 || longitudeDelta > 40) return null;
+  let longitude = (east + west) / 2;
+  if (Math.abs(east - west) > 180) longitude += longitude > 0 ? -180 : 180;
+  return readViewport({ latitude: (north + south) / 2, longitude, latitudeDelta, longitudeDelta });
+}
+
+async function visibleViewport(map: MapView | null, fallback: MapViewport): Promise<MapViewport> {
+  if (!map) return fallback;
+  try {
+    const bounds = await map.getMapBoundaries();
+    return viewportFromBounds(bounds) ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function regionMeaningfullyChanged(previous: MapViewport | null, next: MapViewport) {
+  if (!previous) return true;
+  if (distanceInKm(previous, next) >= 0.35) return true;
+  const latitudeRatio = Math.abs(next.latitudeDelta - previous.latitudeDelta) / Math.max(previous.latitudeDelta, 0.0001);
+  const longitudeRatio = Math.abs(next.longitudeDelta - previous.longitudeDelta) / Math.max(previous.longitudeDelta, 0.0001);
+  return latitudeRatio >= 0.12 || longitudeRatio >= 0.12;
+}
+
 function distanceInKm(from: Pick<MapViewport, 'latitude' | 'longitude'>, to: Pick<MapViewport, 'latitude' | 'longitude'>) {
   const radians = (degrees: number) => (degrees * Math.PI) / 180;
   const latitudeDelta = radians(to.latitude - from.latitude);
@@ -85,9 +132,10 @@ function distanceInKm(from: Pick<MapViewport, 'latitude' | 'longitude'>, to: Pic
 
 export function useWeatherMap(isPremium = false) {
   const mapRef = useRef<MapView>(null);
+  const mapReadyRef = useRef(false);
+  const pendingRegionRef = useRef<MapViewport | null>(null);
   const latestViewportRef = useRef<MapViewport>(DEFAULT_VIEWPORT);
   const pendingViewportTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastRequestedViewportRef = useRef<string | null>(null);
   const weatherRequestIdRef = useRef(0);
   const modelRequestIdRef = useRef(0);
   const lastModelViewportRef = useRef<MapViewport | null>(null);
@@ -118,7 +166,6 @@ export function useWeatherMap(isPremium = false) {
   const refreshSuitability = useCallback(async (viewport: MapViewport) => {
     const requestId = ++modelRequestIdRef.current;
     setModelLoading(true);
-    setSuitability(null);
     try {
       const result = await fetchSuitabilityGrid(viewport, isPremium);
       if (requestId !== modelRequestIdRef.current) return;
@@ -132,22 +179,39 @@ export function useWeatherMap(isPremium = false) {
   }, [isPremium]);
 
   const refreshViewport = useCallback((viewport: MapViewport, force = false) => {
-    const viewportKey = [viewport.latitude.toFixed(3), viewport.longitude.toFixed(3), viewport.latitudeDelta.toFixed(3), viewport.longitudeDelta.toFixed(3)].join(':');
-    latestViewportRef.current = viewport;
-    if (!force && lastRequestedViewportRef.current === viewportKey) return;
-    lastRequestedViewportRef.current = viewportKey;
-    lastModelViewportRef.current = viewport;
-    void refreshWeather(viewport.latitude, viewport.longitude);
-    void refreshSuitability(viewport);
+    const readable = readViewport(viewport);
+    if (!readable) return;
+    latestViewportRef.current = readable;
+    if (!force && !regionMeaningfullyChanged(lastModelViewportRef.current, readable)) return;
+    lastModelViewportRef.current = readable;
+    void refreshWeather(readable.latitude, readable.longitude);
+    void refreshSuitability(readable);
   }, [refreshSuitability, refreshWeather]);
 
   const handleRegionChangeComplete = useCallback((viewport: MapViewport) => {
-    latestViewportRef.current = viewport;
+    const readable = readViewport(viewport);
+    if (!readable) return;
+    latestViewportRef.current = readable;
     if (pendingViewportTimerRef.current) clearTimeout(pendingViewportTimerRef.current);
-    pendingViewportTimerRef.current = setTimeout(() => refreshViewport(viewport), 650);
+    pendingViewportTimerRef.current = setTimeout(() => {
+      void visibleViewport(mapRef.current, readable).then((next) => refreshViewport(next));
+    }, 650);
   }, [refreshViewport]);
 
-  const refreshCurrentViewport = useCallback(() => refreshViewport(latestViewportRef.current, true), [refreshViewport]);
+  const handleMapReady = useCallback(() => {
+    mapReadyRef.current = true;
+    const pending = pendingRegionRef.current;
+    pendingRegionRef.current = null;
+    if (pending) {
+      mapRef.current?.animateToRegion(pending, 450);
+      return;
+    }
+    void visibleViewport(mapRef.current, latestViewportRef.current).then((viewport) => refreshViewport(viewport));
+  }, [refreshViewport]);
+
+  const refreshCurrentViewport = useCallback(() => {
+    void visibleViewport(mapRef.current, latestViewportRef.current).then((viewport) => refreshViewport(viewport, true));
+  }, [refreshViewport]);
 
   useEffect(() => {
     let isMounted = true;
@@ -164,7 +228,8 @@ export function useWeatherMap(isPremium = false) {
         setLocation(nextLocation);
         const gpsViewport = { ...nextLocation, latitudeDelta: DEFAULT_VIEWPORT.latitudeDelta, longitudeDelta: DEFAULT_VIEWPORT.longitudeDelta };
         latestViewportRef.current = gpsViewport;
-        mapRef.current?.animateToRegion(gpsViewport);
+        if (mapReadyRef.current) mapRef.current?.animateToRegion(gpsViewport, 450);
+        else pendingRegionRef.current = gpsViewport;
         refreshViewport(gpsViewport);
 
         locationSubscription = await Location.watchPositionAsync(
@@ -294,5 +359,6 @@ export function useWeatherMap(isPremium = false) {
     potentialSpecies,
     refreshCurrentViewport,
     handleRegionChangeComplete,
+    handleMapReady,
   };
 }

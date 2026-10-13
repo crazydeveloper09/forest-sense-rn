@@ -3,7 +3,7 @@ import { colors } from '../../theme';
 
 export default function RecognitionSafetyNotice() {
   return (
-    <Text style={styles.notice}>Wynik nie zastępuje eksperta. Nie jedz na podstawie zdjęcia.</Text>
+    <Text style={styles.notice}>Wynik nie zastępuje eksperta!  Nie używaj do celów spożywczych jeśli nie jesteś pewien.</Text>
   );
 }
 
