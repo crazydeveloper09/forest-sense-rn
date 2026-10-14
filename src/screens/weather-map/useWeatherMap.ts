@@ -313,32 +313,32 @@ export function useWeatherMap(isPremium = false) {
     if (lastGoodConditionsKeyRef.current === notificationKey) return;
     lastGoodConditionsKeyRef.current = notificationKey;
 
-    // void import('expo-notifications')
-    //   .then((Notifications) => {
-    //     Notifications.setNotificationHandler({
-    //       handleNotification: async () => ({
-    //         shouldShowAlert: true,
-    //         shouldShowBanner: true,
-    //         shouldShowList: true,
-    //         shouldPlaySound: false,
-    //         shouldSetBadge: false,
-    //       }),
-    //     });
-    //     return Notifications.requestPermissionsAsync().then(({ status }) => {
-    //       if (status !== 'granted') return;
-    //       return Notifications.scheduleNotificationAsync({
-    //         content: {
-    //           title: 'Dobry moment na grzyby',
-    //           body: `Warunki są sprzyjające: ocena ${summary.score}/100, ${weather.temperature.toFixed(1)}°C, wilgotność ${weather.humidity}%`,
-    //         },
-    //         trigger: {
-    //           type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-    //           seconds: 5,
-    //         },
-    //       });
-    //     });
-    //   })
-    //   .catch(() => undefined);
+    void import('expo-notifications')
+      .then((Notifications) => {
+        Notifications.setNotificationHandler({
+          handleNotification: async () => ({
+            shouldShowAlert: true,
+            shouldShowBanner: true,
+            shouldShowList: true,
+            shouldPlaySound: false,
+            shouldSetBadge: false,
+          }),
+        });
+        return Notifications.requestPermissionsAsync().then(({ status }) => {
+          if (status !== 'granted') return;
+          return Notifications.scheduleNotificationAsync({
+            content: {
+              title: 'Dobry moment na grzyby',
+              body: `Warunki są sprzyjające: ocena ${summary.score}/100, ${weather.temperature.toFixed(1)}°C, wilgotność ${weather.humidity}%`,
+            },
+            trigger: {
+              type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+              seconds: 5,
+            },
+          });
+        });
+      })
+      .catch(() => undefined);
   }, [isPremium, summary, weather]);
 
   const potentialSpecies = useMemo(() => findPotentialSpecies(summary), [summary]);
