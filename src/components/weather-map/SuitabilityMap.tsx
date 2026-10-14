@@ -16,6 +16,7 @@ export type Props = {
   location: { latitude: number; longitude: number } | null;
   historyPins?: HistoryPin[];
   isPremium?: boolean;
+  onRegionChange: (viewport: MapViewport) => void;
   onRegionChangeComplete: (viewport: MapViewport) => void;
   onMapReady?: () => void;
 };
@@ -42,17 +43,19 @@ function getCellCenter(cell: SuitabilityCell) {
   };
 }
 
-export default function SuitabilityMap({ mapRef, cells, location, historyPins = [], isPremium = false, onRegionChangeComplete, onMapReady }: Props) {
+export default function SuitabilityMap({ mapRef, cells, location, historyPins = [], isPremium = false, onRegionChange, onRegionChangeComplete, onMapReady }: Props) {
   const premiumHotspots = isPremium ? [...cells].sort((left, right) => right.score - left.score).slice(0, 3) : [];
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} collapsable={false}>
       <MapView
         ref={mapRef}
         style={styles.map}
-        mapType={Platform.OS === 'ios' ? 'mutedStandard' : 'terrain'}
+        mapType={Platform.OS === 'ios' ? 'mutedStandard' : 'standard'}
+        loadingBackgroundColor="#143028"
         initialRegion={{ latitude: 52.2297, longitude: 21.0122, latitudeDelta: 0.09, longitudeDelta: 0.09 }}
         onMapReady={onMapReady}
+        onRegionChange={onRegionChange}
         onRegionChangeComplete={onRegionChangeComplete}
       >
         {cells.map((cell) => (
@@ -106,8 +109,8 @@ export default function SuitabilityMap({ mapRef, cells, location, historyPins = 
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, overflow: 'hidden', backgroundColor: '#0c2019' },
-  map: { flex: 1 },
+  container: { flex: 1, backgroundColor: '#143028' },
+  map: StyleSheet.absoluteFill,
   marker: { width: 40, height: 40, borderRadius: 999, backgroundColor: '#f1f8ee', borderWidth: 2, borderColor: '#1e4c3d', alignItems: 'center', justifyContent: 'center' },
   markerText: { color: '#173b2d', fontWeight: '800', fontSize: 12 },
   historyMarker: { width: 28, height: 28, borderRadius: 999, backgroundColor: '#2d8d62', borderWidth: 2, borderColor: '#dffced', alignItems: 'center', justifyContent: 'center' },

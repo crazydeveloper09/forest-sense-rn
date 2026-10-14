@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
-import { Platform, StatusBar as NativeStatusBar, StyleSheet, View } from 'react-native';
+import { useEffect, useState, type ComponentType } from 'react';
+import { Platform, StyleSheet, View, type ViewProps } from 'react-native';
 import { initializeGoogleMobileAds } from './src/ads';
 import { AuthProvider, useAuth } from './src/auth/AuthContext';
 import BottomTabs, { type TabKey } from './src/components/BottomTabsBar';
@@ -14,8 +14,11 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import WeatherMapScreen from './src/screens/WeatherMapScreen';
 import { initializeAppStorage } from './src/storage';
 import { startAutoSync } from './src/sync/observations';
+import { colors } from './src/theme';
 
-const androidStatusBarInset = Platform.OS === 'android' ? NativeStatusBar.currentHeight ?? 0 : 0;
+const AndroidSafeArea: ComponentType<ViewProps> = Platform.OS === 'android'
+  ? require('react-native/Libraries/Components/SafeAreaView/RCTSafeAreaViewNativeComponent').default
+  : View;
 
 function App() {
   const { user, authVisible } = useAuth();
@@ -69,12 +72,14 @@ function App() {
   return (
     <View style={styles.appShell}>
       <StatusBar style="light" />
-      <View style={[styles.screen, { paddingTop: androidStatusBarInset }]}>{renderScreen()}</View>
-      <BottomTabs activeTab={activeTab} onChange={setActiveTab} />
+      <AndroidSafeArea style={styles.safeContent}>
+        <View style={styles.screen}>{renderScreen()}</View>
+        <BottomTabs activeTab={activeTab} onChange={setActiveTab} />
+      </AndroidSafeArea>
       {authVisible && (
-        <View style={[styles.authOverlay, { paddingTop: androidStatusBarInset }]}>
+        <AndroidSafeArea style={styles.authOverlay}>
           <AuthScreen />
-        </View>
+        </AndroidSafeArea>
       )}
     </View>
   );
@@ -84,6 +89,10 @@ const styles = StyleSheet.create({
   appShell: {
     flex: 1,
     backgroundColor: '#071b15',
+  },
+  safeContent: {
+    flex: 1,
+    backgroundColor: colors.tabBar,
   },
   screen: {
     flex: 1,

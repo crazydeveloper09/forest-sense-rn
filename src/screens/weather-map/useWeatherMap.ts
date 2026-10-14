@@ -85,37 +85,9 @@ function readViewport(region: Partial<MapViewport> | null | undefined): MapViewp
   return { latitude, longitude, latitudeDelta, longitudeDelta };
 }
 
-function viewportFromBounds(bounds: {
-  northEast?: { latitude?: number; longitude?: number };
-  southWest?: { latitude?: number; longitude?: number };
-} | null | undefined): MapViewport | null {
-  const north = Number(bounds?.northEast?.latitude);
-  const east = Number(bounds?.northEast?.longitude);
-  const south = Number(bounds?.southWest?.latitude);
-  const west = Number(bounds?.southWest?.longitude);
-  if (![north, east, south, west].every(Number.isFinite)) return null;
-  let longitudeDelta = Math.abs(east - west);
-  if (longitudeDelta > 180) longitudeDelta = 360 - longitudeDelta;
-  const latitudeDelta = Math.abs(north - south);
-  if (latitudeDelta > 40 || longitudeDelta > 40) return null;
-  let longitude = (east + west) / 2;
-  if (Math.abs(east - west) > 180) longitude += longitude > 0 ? -180 : 180;
-  return readViewport({ latitude: (north + south) / 2, longitude, latitudeDelta, longitudeDelta });
-}
-
-async function visibleViewport(map: MapView | null, fallback: MapViewport): Promise<MapViewport> {
-  if (!map) return fallback;
-  try {
-    const bounds = await map.getMapBoundaries();
-    return viewportFromBounds(bounds) ?? fallback;
-  } catch {
-    return fallback;
-  }
-}
-
 function regionMeaningfullyChanged(previous: MapViewport | null, next: MapViewport) {
   if (!previous) return true;
-  if (distanceInKm(previous, next) >= 0.35) return true;
+  if (distanceInKm(previous, next) >= 0.15) return true;
   const latitudeRatio = Math.abs(next.latitudeDelta - previous.latitudeDelta) / Math.max(previous.latitudeDelta, 0.0001);
   const longitudeRatio = Math.abs(next.longitudeDelta - previous.longitudeDelta) / Math.max(previous.longitudeDelta, 0.0001);
   return latitudeRatio >= 0.12 || longitudeRatio >= 0.12;
@@ -135,9 +107,10 @@ export function useWeatherMap(isPremium = false) {
   const mapReadyRef = useRef(false);
   const pendingRegionRef = useRef<MapViewport | null>(null);
   const latestViewportRef = useRef<MapViewport>(DEFAULT_VIEWPORT);
-  const pendingViewportTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const weatherRequestIdRef = useRef(0);
   const modelRequestIdRef = useRef(0);
+  const lastLoadedViewportRef = useRef<MapViewport | null>(null);
+  const inFlightViewportRef = useRef<MapViewport | null>(null);
   const lastModelViewportRef = useRef<MapViewport | null>(null);
   const lastGoodConditionsKeyRef = useRef<string | null>(null);
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -165,16 +138,31 @@ export function useWeatherMap(isPremium = false) {
 
   const refreshSuitability = useCallback(async (viewport: MapViewport) => {
     const requestId = ++modelRequestIdRef.current;
+    inFlightViewportRef.current = viewport;
     setModelLoading(true);
+    const load = () => fetchSuitabilityGrid(viewport, isPremium);
     try {
-      const result = await fetchSuitabilityGrid(viewport, isPremium);
+      let result: SuitabilityResult;
+      try {
+        result = await load();
+      } catch {
+        if (requestId !== modelRequestIdRef.current) return;
+        result = await load();
+      }
       if (requestId !== modelRequestIdRef.current) return;
       setSuitability(result);
       setModelError(false);
+      lastLoadedViewportRef.current = viewport;
     } catch {
       if (requestId === modelRequestIdRef.current) setModelError(true);
     } finally {
-      if (requestId === modelRequestIdRef.current) setModelLoading(false);
+      if (requestId === modelRequestIdRef.current) {
+        inFlightViewportRef.current = null;
+        setModelLoading(false);
+        if (regionMeaningfullyChanged(viewport, latestViewportRef.current)) {
+          refreshViewportRef.current(latestViewportRef.current);
+        }
+      }
     }
   }, [isPremium]);
 
@@ -182,20 +170,29 @@ export function useWeatherMap(isPremium = false) {
     const readable = readViewport(viewport);
     if (!readable) return;
     latestViewportRef.current = readable;
-    if (!force && !regionMeaningfullyChanged(lastModelViewportRef.current, readable)) return;
+    const alreadyLoaded = !regionMeaningfullyChanged(lastLoadedViewportRef.current, readable);
+    const alreadyLoading = inFlightViewportRef.current != null
+      && !regionMeaningfullyChanged(inFlightViewportRef.current, readable);
+    if (alreadyLoading || (!force && alreadyLoaded)) return;
     lastModelViewportRef.current = readable;
     void refreshWeather(readable.latitude, readable.longitude);
     void refreshSuitability(readable);
   }, [refreshSuitability, refreshWeather]);
 
+  const refreshViewportRef = useRef(refreshViewport);
+  refreshViewportRef.current = refreshViewport;
+
+  const handleRegionChange = useCallback((viewport: MapViewport) => {
+    const readable = readViewport(viewport);
+    if (!readable) return;
+    latestViewportRef.current = readable;
+  }, []);
+
   const handleRegionChangeComplete = useCallback((viewport: MapViewport) => {
     const readable = readViewport(viewport);
     if (!readable) return;
     latestViewportRef.current = readable;
-    if (pendingViewportTimerRef.current) clearTimeout(pendingViewportTimerRef.current);
-    pendingViewportTimerRef.current = setTimeout(() => {
-      void visibleViewport(mapRef.current, readable).then((next) => refreshViewport(next));
-    }, 650);
+    refreshViewport(readable);
   }, [refreshViewport]);
 
   const handleMapReady = useCallback(() => {
@@ -203,14 +200,16 @@ export function useWeatherMap(isPremium = false) {
     const pending = pendingRegionRef.current;
     pendingRegionRef.current = null;
     if (pending) {
+      latestViewportRef.current = pending;
       mapRef.current?.animateToRegion(pending, 450);
+      refreshViewport(pending, true);
       return;
     }
-    void visibleViewport(mapRef.current, latestViewportRef.current).then((viewport) => refreshViewport(viewport));
+    refreshViewport(latestViewportRef.current, true);
   }, [refreshViewport]);
 
   const refreshCurrentViewport = useCallback(() => {
-    void visibleViewport(mapRef.current, latestViewportRef.current).then((viewport) => refreshViewport(viewport, true));
+    refreshViewport(latestViewportRef.current, true);
   }, [refreshViewport]);
 
   useEffect(() => {
@@ -259,7 +258,6 @@ export function useWeatherMap(isPremium = false) {
       if (viewport) void refreshSuitability(viewport);
     }, 30 * 60 * 1000);
     return () => {
-      if (pendingViewportTimerRef.current) clearTimeout(pendingViewportTimerRef.current);
       clearInterval(weatherRefresh);
       clearInterval(modelRefresh);
     };
@@ -315,32 +313,32 @@ export function useWeatherMap(isPremium = false) {
     if (lastGoodConditionsKeyRef.current === notificationKey) return;
     lastGoodConditionsKeyRef.current = notificationKey;
 
-    void import('expo-notifications')
-      .then((Notifications) => {
-        Notifications.setNotificationHandler({
-          handleNotification: async () => ({
-            shouldShowAlert: true,
-            shouldShowBanner: true,
-            shouldShowList: true,
-            shouldPlaySound: false,
-            shouldSetBadge: false,
-          }),
-        });
-        return Notifications.requestPermissionsAsync().then(({ status }) => {
-          if (status !== 'granted') return;
-          return Notifications.scheduleNotificationAsync({
-            content: {
-              title: 'Dobry moment na grzyby',
-              body: `Warunki są sprzyjające: ocena ${summary.score}/100, ${weather.temperature.toFixed(1)}°C, wilgotność ${weather.humidity}%`,
-            },
-            trigger: {
-              type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-              seconds: 5,
-            },
-          });
-        });
-      })
-      .catch(() => undefined);
+    // void import('expo-notifications')
+    //   .then((Notifications) => {
+    //     Notifications.setNotificationHandler({
+    //       handleNotification: async () => ({
+    //         shouldShowAlert: true,
+    //         shouldShowBanner: true,
+    //         shouldShowList: true,
+    //         shouldPlaySound: false,
+    //         shouldSetBadge: false,
+    //       }),
+    //     });
+    //     return Notifications.requestPermissionsAsync().then(({ status }) => {
+    //       if (status !== 'granted') return;
+    //       return Notifications.scheduleNotificationAsync({
+    //         content: {
+    //           title: 'Dobry moment na grzyby',
+    //           body: `Warunki są sprzyjające: ocena ${summary.score}/100, ${weather.temperature.toFixed(1)}°C, wilgotność ${weather.humidity}%`,
+    //         },
+    //         trigger: {
+    //           type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+    //           seconds: 5,
+    //         },
+    //       });
+    //     });
+    //   })
+    //   .catch(() => undefined);
   }, [isPremium, summary, weather]);
 
   const potentialSpecies = useMemo(() => findPotentialSpecies(summary), [summary]);
@@ -358,6 +356,7 @@ export function useWeatherMap(isPremium = false) {
     premiumInsight,
     potentialSpecies,
     refreshCurrentViewport,
+    handleRegionChange,
     handleRegionChangeComplete,
     handleMapReady,
   };

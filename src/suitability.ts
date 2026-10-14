@@ -243,6 +243,15 @@ function buildScore(
   return Math.round(available.reduce((sum, factor) => sum + factor.value! * factor.weight, 0) / totalWeight);
 }
 
+function nearestWeatherPoint(points: WeatherPoint[], coordinate: Coordinate) {
+  return points.reduce((nearest, point) => {
+    const latitude = point.latitude ?? coordinate.latitude;
+    const longitude = point.longitude ?? coordinate.longitude;
+    const distance = Math.hypot(latitude - coordinate.latitude, longitude - coordinate.longitude);
+    return distance < nearest.distance ? { point, distance } : nearest;
+  }, { point: points[0], distance: Number.POSITIVE_INFINITY }).point;
+}
+
 export async function fetchSuitabilityGrid(viewport: MapViewport, detailed = false): Promise<SuitabilityResult> {
   const gridSize = detailed ? PREMIUM_GRID_SIZE : FREE_GRID_SIZE;
   const grid = buildGrid(viewport, gridSize);
@@ -250,8 +259,8 @@ export async function fetchSuitabilityGrid(viewport: MapViewport, detailed = fal
   const latitudeStep = Math.min(Math.max(viewport.latitudeDelta, 0.002), 60) / gridSize;
   const longitudeStep = Math.min(Math.max(viewport.longitudeDelta, 0.002), 120) / gridSize;
   const url = new URL('https://api.open-meteo.com/v1/forecast');
-  url.searchParams.set('latitude', coordinates.map((point) => point.latitude.toFixed(4)).join(','));
-  url.searchParams.set('longitude', coordinates.map((point) => point.longitude.toFixed(4)).join(','));
+  url.searchParams.set('latitude', coordinates.map((point) => point.latitude.toFixed(5)).join(','));
+  url.searchParams.set('longitude', coordinates.map((point) => point.longitude.toFixed(5)).join(','));
   url.searchParams.set('current', 'temperature_2m,soil_moisture_0_to_1cm,soil_moisture_9_to_27cm');
   url.searchParams.set('hourly', 'precipitation');
   url.searchParams.set('past_hours', '72');
@@ -259,10 +268,13 @@ export async function fetchSuitabilityGrid(viewport: MapViewport, detailed = fal
   url.searchParams.set('timezone', 'auto');
 
   const weatherResponse = await fetchJson<WeatherPoint | WeatherPoint[]>(url);
-  const weatherPoints = Array.isArray(weatherResponse) ? weatherResponse : [weatherResponse];
-  if (weatherPoints.length !== coordinates.length) {
-    throw new Error('Environmental forecast returned an unexpected number of locations');
+  const returnedPoints = Array.isArray(weatherResponse) ? weatherResponse : [weatherResponse];
+  if (!returnedPoints.length) {
+    throw new Error('Environmental forecast returned no locations');
   }
+  const weatherPoints = returnedPoints.length === coordinates.length
+    ? returnedPoints
+    : coordinates.map((coordinate) => nearestWeatherPoint(returnedPoints, coordinate));
 
   // SoilGrids is static, unlike weather. Sample the four corners and center to reduce calls;
   // each map cell uses the nearest sampled soil profile.

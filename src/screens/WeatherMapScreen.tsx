@@ -46,6 +46,7 @@ export default function WeatherMapScreen({ adsEnabled, isPremium }: Props) {
     premiumInsight,
     potentialSpecies,
     refreshCurrentViewport,
+    handleRegionChange,
     handleRegionChangeComplete,
     handleMapReady,
   } = useWeatherMap(isPremium);
@@ -97,6 +98,7 @@ export default function WeatherMapScreen({ adsEnabled, isPremium }: Props) {
           location={location}
           historyPins={historyPins}
           isPremium={isPremium}
+          onRegionChange={handleRegionChange}
           onRegionChangeComplete={handleRegionChangeComplete}
           onMapReady={handleMapReady}
         />
@@ -111,7 +113,7 @@ export default function WeatherMapScreen({ adsEnabled, isPremium }: Props) {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Odśwież warunki"
-            style={[styles.refresh, refreshing && styles.refreshDisabled]}
+            style={[styles.refresh, Platform.OS === 'ios' && styles.refreshBelowCompass, refreshing && styles.refreshDisabled]}
             onPress={refreshCurrentViewport}
             disabled={refreshing}
           >
@@ -176,6 +178,7 @@ const styles = StyleSheet.create({
   },
   score: { color: '#ffffff', fontSize: 52, fontWeight: '800', lineHeight: 58, marginTop: 6, textShadowColor: 'rgba(8, 26, 20, 0.65)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 },
   overlayMeta: { color: '#ffffff', fontSize: 15, fontWeight: '700', textShadowColor: 'rgba(8, 26, 20, 0.65)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 },
+  refreshBelowCompass: { marginTop: 56 },
   refresh: {
     width: 44,
     height: 44,
