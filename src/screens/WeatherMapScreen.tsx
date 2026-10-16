@@ -48,6 +48,7 @@ export default function WeatherMapScreen({ adsEnabled, isPremium }: Props) {
     refreshCurrentViewport,
     handleRegionChange,
     handleRegionChangeComplete,
+    handleMapLayout,
     handleMapReady,
   } = useWeatherMap(isPremium);
 
@@ -100,6 +101,7 @@ export default function WeatherMapScreen({ adsEnabled, isPremium }: Props) {
           isPremium={isPremium}
           onRegionChange={handleRegionChange}
           onRegionChangeComplete={handleRegionChangeComplete}
+          onMapLayout={handleMapLayout}
           onMapReady={handleMapReady}
         />
         <View style={[styles.overlay, { top: 12 + iosOverlayInset }]} pointerEvents="box-none">

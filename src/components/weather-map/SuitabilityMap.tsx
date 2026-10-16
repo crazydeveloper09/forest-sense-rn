@@ -18,6 +18,7 @@ export type Props = {
   isPremium?: boolean;
   onRegionChange: (viewport: MapViewport) => void;
   onRegionChangeComplete: (viewport: MapViewport) => void;
+  onMapLayout?: (size: { width: number; height: number }) => void;
   onMapReady?: () => void;
 };
 
@@ -25,6 +26,16 @@ export function heatColor(score: number) {
   if (score >= 70) return 'rgba(92, 205, 123, 0.42)';
   if (score >= 45) return 'rgba(193, 218, 94, 0.38)';
   return 'rgba(239, 120, 82, 0.38)';
+}
+
+function cellBoundary(cell: SuitabilityCell) {
+  if (Platform.OS !== 'ios') return cell.boundary;
+  const center = getCellCenter(cell);
+  const bleed = 1.04;
+  return cell.boundary.map((point) => ({
+    latitude: center.latitude + (point.latitude - center.latitude) * bleed,
+    longitude: center.longitude + (point.longitude - center.longitude) * bleed,
+  }));
 }
 
 function getCellCenter(cell: SuitabilityCell) {
@@ -43,11 +54,15 @@ function getCellCenter(cell: SuitabilityCell) {
   };
 }
 
-export default function SuitabilityMap({ mapRef, cells, location, historyPins = [], isPremium = false, onRegionChange, onRegionChangeComplete, onMapReady }: Props) {
+export default function SuitabilityMap({ mapRef, cells, location, historyPins = [], isPremium = false, onRegionChange, onRegionChangeComplete, onMapLayout, onMapReady }: Props) {
   const premiumHotspots = isPremium ? [...cells].sort((left, right) => right.score - left.score).slice(0, 3) : [];
 
   return (
-    <View style={styles.container} collapsable={false}>
+    <View
+      style={styles.container}
+      collapsable={false}
+      onLayout={(event) => onMapLayout?.({ width: event.nativeEvent.layout.width, height: event.nativeEvent.layout.height })}
+    >
       <MapView
         ref={mapRef}
         style={styles.map}
@@ -61,10 +76,10 @@ export default function SuitabilityMap({ mapRef, cells, location, historyPins = 
         {cells.map((cell) => (
           <Polygon
             key={cell.id}
-            coordinates={cell.boundary}
+            coordinates={cellBoundary(cell)}
             fillColor={heatColor(cell.score)}
-            strokeColor="rgba(225, 244, 202, 0.4)"
-            strokeWidth={1}
+            strokeColor={Platform.OS === 'ios' ? 'transparent' : 'rgba(225, 244, 202, 0.4)'}
+            strokeWidth={Platform.OS === 'ios' ? 0 : 1}
           />
         ))}
         {premiumHotspots.map((cell, index) => {

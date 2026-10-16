@@ -1,4 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
+import Constants from 'expo-constants';
 import { useEffect, useState, type ComponentType } from 'react';
 import { Platform, StyleSheet, View, type ViewProps } from 'react-native';
 import { initializeGoogleMobileAds } from './src/ads';
@@ -19,6 +20,8 @@ import { colors } from './src/theme';
 const AndroidSafeArea: ComponentType<ViewProps> = Platform.OS === 'android'
   ? require('react-native/Libraries/Components/SafeAreaView/RCTSafeAreaViewNativeComponent').default
   : View;
+
+const iosTopInset = Platform.OS === 'ios' ? (Constants.statusBarHeight || 47) : 0;
 
 function App() {
   const { user, authVisible } = useAuth();
@@ -73,11 +76,11 @@ function App() {
     <View style={styles.appShell}>
       <StatusBar style="light" />
       <AndroidSafeArea style={styles.safeContent}>
-        <View style={styles.screen}>{renderScreen()}</View>
+        <View style={[styles.screen, activeTab !== 'map' && { paddingTop: iosTopInset }]}>{renderScreen()}</View>
         <BottomTabs activeTab={activeTab} onChange={setActiveTab} />
       </AndroidSafeArea>
       {authVisible && (
-        <AndroidSafeArea style={styles.authOverlay}>
+        <AndroidSafeArea style={[styles.authOverlay, Platform.OS === 'ios' && { paddingTop: iosTopInset }]}>
           <AuthScreen />
         </AndroidSafeArea>
       )}

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 import MapView from 'react-native-maps';
 import * as Location from 'expo-location';
 import { fetchSuitabilityGrid, type MapViewport, type SuitabilityResult } from '../../suitability';
@@ -93,6 +94,21 @@ function regionMeaningfullyChanged(previous: MapViewport | null, next: MapViewpo
   return latitudeRatio >= 0.12 || longitudeRatio >= 0.12;
 }
 
+function viewportForPhone(viewport: MapViewport, width: number, height: number): MapViewport {
+  if (Platform.OS !== 'ios' || width < 1 || height < 1) return viewport;
+  const viewAspect = width / height;
+  const longitudeScale = Math.max(Math.cos((viewport.latitude * Math.PI) / 180), 0.2);
+  const regionAspect = (viewport.longitudeDelta * longitudeScale) / Math.max(viewport.latitudeDelta, 0.0001);
+  const fitted = viewAspect > regionAspect
+    ? { ...viewport, longitudeDelta: (viewport.latitudeDelta * viewAspect) / longitudeScale }
+    : { ...viewport, latitudeDelta: (viewport.longitudeDelta * longitudeScale) / viewAspect };
+  return {
+    ...fitted,
+    latitudeDelta: fitted.latitudeDelta * 1.06,
+    longitudeDelta: fitted.longitudeDelta * 1.06,
+  };
+}
+
 function distanceInKm(from: Pick<MapViewport, 'latitude' | 'longitude'>, to: Pick<MapViewport, 'latitude' | 'longitude'>) {
   const radians = (degrees: number) => (degrees * Math.PI) / 180;
   const latitudeDelta = radians(to.latitude - from.latitude);
@@ -105,6 +121,7 @@ function distanceInKm(from: Pick<MapViewport, 'latitude' | 'longitude'>, to: Pic
 export function useWeatherMap(isPremium = false) {
   const mapRef = useRef<MapView>(null);
   const mapReadyRef = useRef(false);
+  const mapSizeRef = useRef({ width: 0, height: 0 });
   const pendingRegionRef = useRef<MapViewport | null>(null);
   const latestViewportRef = useRef<MapViewport>(DEFAULT_VIEWPORT);
   const weatherRequestIdRef = useRef(0);
@@ -136,9 +153,9 @@ export function useWeatherMap(isPremium = false) {
     }
   }, []);
 
-  const refreshSuitability = useCallback(async (viewport: MapViewport) => {
+  const refreshSuitability = useCallback(async (viewport: MapViewport, mapViewport: MapViewport = viewport) => {
     const requestId = ++modelRequestIdRef.current;
-    inFlightViewportRef.current = viewport;
+    inFlightViewportRef.current = mapViewport;
     setModelLoading(true);
     const load = () => fetchSuitabilityGrid(viewport, isPremium);
     try {
@@ -152,14 +169,14 @@ export function useWeatherMap(isPremium = false) {
       if (requestId !== modelRequestIdRef.current) return;
       setSuitability(result);
       setModelError(false);
-      lastLoadedViewportRef.current = viewport;
+      lastLoadedViewportRef.current = mapViewport;
     } catch {
       if (requestId === modelRequestIdRef.current) setModelError(true);
     } finally {
       if (requestId === modelRequestIdRef.current) {
         inFlightViewportRef.current = null;
         setModelLoading(false);
-        if (regionMeaningfullyChanged(viewport, latestViewportRef.current)) {
+        if (regionMeaningfullyChanged(mapViewport, latestViewportRef.current)) {
           refreshViewportRef.current(latestViewportRef.current);
         }
       }
@@ -174,9 +191,10 @@ export function useWeatherMap(isPremium = false) {
     const alreadyLoading = inFlightViewportRef.current != null
       && !regionMeaningfullyChanged(inFlightViewportRef.current, readable);
     if (alreadyLoading || (!force && alreadyLoaded)) return;
-    lastModelViewportRef.current = readable;
+    const covered = viewportForPhone(readable, mapSizeRef.current.width, mapSizeRef.current.height);
+    lastModelViewportRef.current = covered;
     void refreshWeather(readable.latitude, readable.longitude);
-    void refreshSuitability(readable);
+    void refreshSuitability(covered, readable);
   }, [refreshSuitability, refreshWeather]);
 
   const refreshViewportRef = useRef(refreshViewport);
@@ -193,6 +211,17 @@ export function useWeatherMap(isPremium = false) {
     if (!readable) return;
     latestViewportRef.current = readable;
     refreshViewport(readable);
+  }, [refreshViewport]);
+
+  const handleMapLayout = useCallback((size: { width: number; height: number }) => {
+    const previous = mapSizeRef.current;
+    mapSizeRef.current = size;
+    const firstMeasurement = previous.width < 1;
+    const previousAspect = previous.width / Math.max(previous.height, 1);
+    const nextAspect = size.width / Math.max(size.height, 1);
+    if ((firstMeasurement || Math.abs(nextAspect - previousAspect) > 0.04) && lastLoadedViewportRef.current) {
+      refreshViewport(latestViewportRef.current, true);
+    }
   }, [refreshViewport]);
 
   const handleMapReady = useCallback(() => {
@@ -358,6 +387,7 @@ export function useWeatherMap(isPremium = false) {
     refreshCurrentViewport,
     handleRegionChange,
     handleRegionChangeComplete,
+    handleMapLayout,
     handleMapReady,
   };
 }
