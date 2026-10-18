@@ -5,10 +5,13 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../auth/AuthContext';
 import { getUsage, subscribeUsage, type UsageStatus } from '../billing';
 import SuitabilityLegend from '../components/weather-map/SuitabilityLegend';
+import TripControls from '../components/weather-map/TripControls';
 import SuitabilityMap from '../components/weather-map/SuitabilityMap';
 import SuitabilityPanel from '../components/weather-map/SuitabilityPanel';
 import WeatherConditionsPanel from '../components/weather-map/WeatherConditionsPanel';
+import { getActiveTrip, subscribeTrips } from '../db';
 import { getOfflineObservations, subscribeOfflineObservations } from '../storage';
+import { getLivePeers, subscribeLivePeers, type LivePeer } from '../trips/live';
 import { colors } from '../theme';
 import { useWeatherMap } from './weather-map/useWeatherMap';
 
@@ -33,6 +36,8 @@ export default function WeatherMapScreen({ adsEnabled, isPremium }: Props) {
   const { user } = useAuth();
   const [usage, setUsage] = useState<UsageStatus | null>(null);
   const [historyPins, setHistoryPins] = useState<Array<{ latitude: number; longitude: number; name: string; probability: number }>>([]);
+  const [tripPoints, setTripPoints] = useState<Array<{ latitude: number; longitude: number }>>([]);
+  const [livePeers, setLivePeers] = useState<LivePeer[]>([]);
   const {
     mapRef,
     location,
@@ -67,6 +72,14 @@ export default function WeatherMapScreen({ adsEnabled, isPremium }: Props) {
   }, []);
 
   useEffect(() => {
+    const loadTrip = () => setTripPoints(getActiveTrip()?.points ?? []);
+    loadTrip();
+    return subscribeTrips(loadTrip);
+  }, []);
+
+  useEffect(() => subscribeLivePeers(() => setLivePeers(getLivePeers())), []);
+
+  useEffect(() => {
     if (!isPremium) {
       setHistoryPins([]);
       return;
@@ -99,6 +112,8 @@ export default function WeatherMapScreen({ adsEnabled, isPremium }: Props) {
           location={location}
           historyPins={historyPins}
           isPremium={isPremium}
+          tripPoints={tripPoints}
+          livePeers={livePeers}
           onRegionChange={handleRegionChange}
           onRegionChangeComplete={handleRegionChangeComplete}
           onMapLayout={handleMapLayout}
@@ -121,6 +136,9 @@ export default function WeatherMapScreen({ adsEnabled, isPremium }: Props) {
           >
             <MaterialCommunityIcons name="refresh" size={22} color={colors.text} />
           </Pressable>
+        </View>
+        <View style={styles.tripDock} pointerEvents="box-none">
+          <TripControls origin={location} />
         </View>
       </View>
       {adsEnabled && usage?.plan === 'free' && BANNER_AD_UNIT_ID ? (
@@ -158,6 +176,7 @@ export default function WeatherMapScreen({ adsEnabled, isPremium }: Props) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   mapStage: { flex: 1.15, minHeight: 240 },
+  tripDock: { position: 'absolute', left: 16, right: 16, bottom: 14 },
   overlay: {
     position: 'absolute',
     top: 12,

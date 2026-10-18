@@ -344,15 +344,6 @@ export function useWeatherMap(isPremium = false) {
 
     void import('expo-notifications')
       .then((Notifications) => {
-        Notifications.setNotificationHandler({
-          handleNotification: async () => ({
-            shouldShowAlert: true,
-            shouldShowBanner: true,
-            shouldShowList: true,
-            shouldPlaySound: false,
-            shouldSetBadge: false,
-          }),
-        });
         return Notifications.requestPermissionsAsync().then(({ status }) => {
           if (status !== 'granted') return;
           return Notifications.scheduleNotificationAsync({

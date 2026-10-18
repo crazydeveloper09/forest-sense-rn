@@ -14,6 +14,8 @@ async function ensureIndexes(db) {
   await db
     .collection("observations")
     .createIndex({ userId: 1, clientId: 1 }, { unique: true });
+  await db.collection("push_tokens").createIndex({ token: 1 }, { unique: true });
+  await db.collection("push_tokens").createIndex({ userId: 1 });
 }
 
 export function getDb() {

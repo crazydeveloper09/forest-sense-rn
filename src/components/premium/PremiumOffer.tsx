@@ -15,7 +15,7 @@ export default function PremiumOffer({ usage, loggedIn, loading, error, onSubscr
   return (
     <View style={styles.heroCard}>
       <Text style={styles.badge}>Najlepsza jakość</Text>
-      <Text style={styles.price}>15 zł / miesiąc</Text>
+      <Text style={styles.price}>25 zł / miesiąc</Text>
       <Text style={styles.subtitle}>Jedno rozpoznanie AI dziennie, bez reklam.</Text>
 
       {usage?.plan === 'premium' && loggedIn ? (

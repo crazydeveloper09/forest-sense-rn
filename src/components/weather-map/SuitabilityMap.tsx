@@ -1,5 +1,5 @@
 import { Fragment } from 'react';
-import MapView, { Circle, Marker, Polygon } from 'react-native-maps';
+import MapView, { Circle, Marker, Polygon, Polyline } from 'react-native-maps';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import type { MapViewport, SuitabilityCell } from '../../suitability';
 
@@ -16,6 +16,8 @@ export type Props = {
   location: { latitude: number; longitude: number } | null;
   historyPins?: HistoryPin[];
   isPremium?: boolean;
+  tripPoints?: Array<{ latitude: number; longitude: number }>;
+  livePeers?: Array<{ userId: string; label: string; points: Array<{ latitude: number; longitude: number }> }>;
   onRegionChange: (viewport: MapViewport) => void;
   onRegionChangeComplete: (viewport: MapViewport) => void;
   onMapLayout?: (size: { width: number; height: number }) => void;
@@ -54,7 +56,7 @@ function getCellCenter(cell: SuitabilityCell) {
   };
 }
 
-export default function SuitabilityMap({ mapRef, cells, location, historyPins = [], isPremium = false, onRegionChange, onRegionChangeComplete, onMapLayout, onMapReady }: Props) {
+export default function SuitabilityMap({ mapRef, cells, location, historyPins = [], isPremium = false, tripPoints = [], livePeers = [], onRegionChange, onRegionChangeComplete, onMapLayout, onMapReady }: Props) {
   const premiumHotspots = isPremium ? [...cells].sort((left, right) => right.score - left.score).slice(0, 3) : [];
 
   return (
@@ -73,6 +75,25 @@ export default function SuitabilityMap({ mapRef, cells, location, historyPins = 
         onRegionChange={onRegionChange}
         onRegionChangeComplete={onRegionChangeComplete}
       >
+        {tripPoints.length > 1 && (
+          <Polyline coordinates={tripPoints} strokeColor="#f2cf58" strokeWidth={4} />
+        )}
+        {livePeers.map((peer) => {
+          const latest = peer.points[peer.points.length - 1];
+          if (!latest) return null;
+          return (
+            <Fragment key={peer.userId}>
+              {peer.points.length > 1 && (
+                <Polyline coordinates={peer.points} strokeColor="#7ec8ff" strokeWidth={4} />
+              )}
+              <Marker coordinate={latest} title={peer.label} description="Na wyprawie">
+                <View style={styles.peerMarker}>
+                  <Text style={styles.peerMarkerText}>{peer.label.slice(0, 1).toUpperCase()}</Text>
+                </View>
+              </Marker>
+            </Fragment>
+          );
+        })}
         {cells.map((cell) => (
           <Polygon
             key={cell.id}
@@ -130,6 +151,8 @@ const styles = StyleSheet.create({
   markerText: { color: '#173b2d', fontWeight: '800', fontSize: 12 },
   historyMarker: { width: 28, height: 28, borderRadius: 999, backgroundColor: '#2d8d62', borderWidth: 2, borderColor: '#dffced', alignItems: 'center', justifyContent: 'center' },
   historyMarkerText: { color: '#f6fff9', fontWeight: '800', fontSize: 12 },
+  peerMarker: { minWidth: 32, height: 32, paddingHorizontal: 8, borderRadius: 16, backgroundColor: '#1d4e89', borderWidth: 2, borderColor: '#d7ecff', alignItems: 'center', justifyContent: 'center' },
+  peerMarkerText: { color: '#f4f9ff', fontWeight: '800', fontSize: 13 },
   hotspotMarker: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#f2cf58', borderWidth: 2, borderColor: '#173b2d', alignItems: 'center', justifyContent: 'center' },
   hotspotMarkerText: { color: '#173b2d', fontSize: 14, fontWeight: '900' },
 });

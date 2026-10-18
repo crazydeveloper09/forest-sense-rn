@@ -1,5 +1,8 @@
 import { readJson, sendJson } from "../http.mjs";
+import { registerPushToken, unregisterPushToken } from "../push/notify.mjs";
+import { inboxTrips, inviteTrustedUser, listTrustedUsers, respondTrustedUser, shareTrip } from "../social/trusted.mjs";
 import { syncObservations } from "../sync/observations.mjs";
+import { syncTrips } from "../sync/trips.mjs";
 import {
   attachEncryptedProfile,
   loginAccount,
@@ -43,9 +46,23 @@ export async function handleAuthRequest(request, response, url) {
 }
 
 export async function handleSyncRequest(request, response, url) {
-  if (request.method !== "POST" || url.pathname !== "/sync/observations") return false;
+  if (request.method !== "POST") return false;
+  const social = {
+    "/sync/observations": syncObservations,
+    "/sync/trips": syncTrips,
+    "/trusted/invite": inviteTrustedUser,
+    "/trusted/respond": respondTrustedUser,
+    "/trusted/list": listTrustedUsers,
+    "/trips/share": shareTrip,
+    "/trips/inbox": inboxTrips,
+    "/push/register": registerPushToken,
+    "/push/unregister": unregisterPushToken,
+  }[url.pathname];
+  if (!social) return false;
   const user = await userFromRequest(request);
-  const body = await readJson(request, SYNC_BODY_LIMIT);
-  sendJson(response, 200, await syncObservations(user.id, body));
+  const body = url.pathname === "/trusted/list" || url.pathname === "/trips/inbox"
+    ? {}
+    : await readJson(request, SYNC_BODY_LIMIT);
+  sendJson(response, 200, await social(user.id, body));
   return true;
 }

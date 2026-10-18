@@ -30,6 +30,7 @@ import {
 } from "./auth/account-usage.mjs";
 import { accountBilling, userFromRequest } from "./auth/service.mjs";
 import { readJson, readRawBody, sendAppReturnPage, sendJson } from "./http.mjs";
+import { attachLiveTrips } from "./live/trips.mjs";
 import { privacyContext, sendView } from "./views.mjs";
 
 const PORT = Number(process.env.PORT || process.env.AI_API_PORT || 8787);
@@ -271,6 +272,8 @@ const server = createServer((request, response) => {
     handleError(error, request, response),
   );
 });
+
+attachLiveTrips(server);
 
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`Forest Sense AI API listening on http://0.0.0.0:${PORT}`);

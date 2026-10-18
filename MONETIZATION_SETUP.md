@@ -12,7 +12,7 @@ The quota identity is a random installation ID in Expo SecureStore. It is not an
 2. Set `STRIPE_SECRET_KEY` to a test key while developing.
 3. Deploy the API at a public HTTPS origin and set `PUBLIC_API_URL` to that origin. Stripe Checkout must be able to return to `/stripe/success` or `/stripe/cancel`.
 4. In Stripe, create a webhook pointing to `https://<your-api>/stripe/webhook`. Subscribe to `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `customer.subscription.updated`, and `customer.subscription.deleted`; put its signing secret in `STRIPE_WEBHOOK_SECRET`.
-5. The server creates a monthly PLN subscription for 1,500 groszy (15 zł). It does not require a pre-created Stripe price.
+5. The server creates a monthly PLN subscription for 2,500 groszy (25 zł). It does not require a pre-created Stripe price.
 
 This sample uses Stripe-hosted Checkout. Mobile marketplace rules for digital subscriptions may require Apple In-App Purchase or Google Play Billing instead of an external Stripe checkout. Confirm the rules for the storefronts and regions where the app will be distributed before release.
 

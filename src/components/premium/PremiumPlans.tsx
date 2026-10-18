@@ -15,6 +15,7 @@ const premiumFeatures = [
   'Szczegółowa prognoza warunków',
   'Powiadomienia o dobrych warunkach',
   'Historia obserwacji offline',
+  'Udostępnianie trasy wyprawy zaufanym',
 ];
 
 function PlanColumn({ title, price, items, highlighted }: { title: string; price: string; items: string[]; highlighted?: boolean }) {
@@ -33,7 +34,7 @@ export default function PremiumPlans() {
   return (
     <View style={styles.planRow}>
       <PlanColumn title="Darmowa" price="0 zł" items={freeFeatures} />
-      <PlanColumn title="Premium" price="15 zł / msc" items={premiumFeatures} highlighted />
+      <PlanColumn title="Premium" price="25 zł / msc" items={premiumFeatures} highlighted />
     </View>
   );
 }

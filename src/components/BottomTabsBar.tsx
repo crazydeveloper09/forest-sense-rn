@@ -13,7 +13,7 @@ const tabs: { key: TabKey; label: string; icon: keyof typeof MaterialCommunityIc
   { key: 'map', label: 'Mapa', icon: 'map-outline' },
   { key: 'ai', label: 'AI', icon: 'mushroom-outline' },
   { key: 'atlas', label: 'Atlas', icon: 'book-open-page-variant-outline' },
-  { key: 'history', label: 'Historia', icon: 'history' },
+  { key: 'history', label: 'Wyprawy', icon: 'map-marker-path' },
   { key: 'settings', label: 'Ustawienia', icon: 'cog-outline' },
 ];
 

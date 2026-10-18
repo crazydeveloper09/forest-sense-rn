@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext';
 import SettingsAccountCard from '../components/settings/SettingsAccountCard';
 import SettingsPlanCard from '../components/settings/SettingsPlanCard';
 import SettingsSupportCard from '../components/settings/SettingsSupportCard';
+import SettingsTrustedCard from '../components/settings/SettingsTrustedCard';
 import { useSyncStatus } from '../sync/observations';
 import PremiumScreen from './PremiumScreen';
 import PrivacyPolicyScreen from './PrivacyPolicyScreen';
@@ -12,7 +13,9 @@ import { colors } from '../theme';
 const appPackage = require('../../package.json') as { version?: string };
 const APP_VERSION = appPackage.version ?? 'unknown';
 
-export default function SettingsScreen() {
+type Props = { isPremium: boolean };
+
+export default function SettingsScreen({ isPremium }: Props) {
   const { user, openAuth, logout } = useAuth();
   const sync = useSyncStatus();
   const [showPremium, setShowPremium] = useState(false);
@@ -51,6 +54,12 @@ export default function SettingsScreen() {
           <PremiumScreen />
         </View>
       )}
+      <SettingsTrustedCard
+        isPremium={isPremium}
+        loggedIn={Boolean(user)}
+        displayName={user?.displayName ?? ''}
+        onLogin={openAuth}
+      />
       <SettingsSupportCard onPrivacyPolicy={() => setShowPrivacyPolicy(true)} />
       <View style={styles.versionCard}>
         <Text style={styles.versionText}>Wersja: {APP_VERSION}</Text>

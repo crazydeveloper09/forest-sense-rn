@@ -212,9 +212,11 @@ export function startAutoSync(): () => void {
     }
     if (!wasOffline) return;
     wasOffline = false;
-    void syncObservations().finally(() => {
-      if (!stopped && state.status === 'offline') wasOffline = true;
-    });
+    void syncObservations()
+      .then(() => import('../trips/sync').then((trips) => trips.syncTrips()))
+      .finally(() => {
+        if (!stopped && state.status === 'offline') wasOffline = true;
+      });
   };
 
   void import('expo-network')

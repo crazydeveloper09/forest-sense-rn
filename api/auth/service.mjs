@@ -253,15 +253,13 @@ export async function verifyMfa(body) {
   return sessionPayload(user, accessToken);
 }
 
-export async function userFromRequest(request) {
-  const header = request.headers.authorization ?? "";
-  const match = /^Bearer\s+(\S+)$/i.exec(Array.isArray(header) ? header[0] : header);
-  if (!match) {
+export async function userFromAccessToken(token) {
+  if (!token || typeof token !== "string") {
     throw new AuthError("Zaloguj się, aby kontynuować.", 401, "AUTH_REQUIRED");
   }
   const db = await getDb();
   const session = await db.collection("sessions").findOne({
-    tokenHash: tokenHash(match[1]),
+    tokenHash: tokenHash(token),
     expiresAt: { $gt: new Date() },
   });
   if (!session) {
@@ -276,6 +274,12 @@ export async function userFromRequest(request) {
     kdfSalt: user.kdfSalt,
     profile: publicProfile(user),
   };
+}
+
+export async function userFromRequest(request) {
+  const header = request.headers.authorization ?? "";
+  const match = /^Bearer\s+(\S+)$/i.exec(Array.isArray(header) ? header[0] : header);
+  return userFromAccessToken(match?.[1]);
 }
 
 export async function logoutAccount(request) {

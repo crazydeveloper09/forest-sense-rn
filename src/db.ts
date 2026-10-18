@@ -79,6 +79,20 @@ export function initDatabase(): void {
   }
   db.runSync(`UPDATE observations SET updatedAt = createdAt WHERE updatedAt IS NULL OR updatedAt = ''`);
   db.execSync('CREATE UNIQUE INDEX IF NOT EXISTS idx_observations_client_id ON observations(clientId)');
+  db.execSync(`
+    CREATE TABLE IF NOT EXISTS trips (
+      clientId TEXT PRIMARY KEY,
+      startedAt TEXT NOT NULL,
+      endedAt TEXT,
+      mushroomCount INTEGER NOT NULL DEFAULT 0,
+      distanceMeters REAL NOT NULL DEFAULT 0,
+      pointsJson TEXT NOT NULL DEFAULT '[]',
+      updatedAt TEXT NOT NULL,
+      dirty INTEGER NOT NULL DEFAULT 1,
+      deleted INTEGER NOT NULL DEFAULT 0,
+      ownerId TEXT
+    );
+  `);
 }
 
 export function getObservations(ownerId?: string | null): MushroomObservation[] {
@@ -171,4 +185,158 @@ export function upsertRemoteObservation(record: SyncObservation & { ownerId: str
       record.ownerId,
     ],
   );
+}
+
+export type TripPoint = { latitude: number; longitude: number; recordedAt: string };
+
+export type StoredTrip = {
+  clientId: string;
+  startedAt: string;
+  endedAt: string | null;
+  mushroomCount: number;
+  distanceMeters: number;
+  points: TripPoint[];
+  updatedAt: string;
+  dirty: number;
+  deleted: number;
+  ownerId: string | null;
+};
+
+const tripListeners = new Set<() => void>();
+
+export function subscribeTrips(listener: () => void): () => void {
+  tripListeners.add(listener);
+  return () => tripListeners.delete(listener);
+}
+
+function notifyTrips(): void {
+  tripListeners.forEach((listener) => listener());
+}
+
+function readTrip(row: {
+  clientId: string;
+  startedAt: string;
+  endedAt: string | null;
+  mushroomCount: number;
+  distanceMeters: number;
+  pointsJson: string;
+  updatedAt: string;
+  dirty: number;
+  deleted: number;
+  ownerId: string | null;
+}): StoredTrip {
+  let points: TripPoint[] = [];
+  try {
+    const parsed = JSON.parse(row.pointsJson) as TripPoint[];
+    if (Array.isArray(parsed)) points = parsed.filter((point) => Number.isFinite(point.latitude) && Number.isFinite(point.longitude));
+  } catch {
+    points = [];
+  }
+  return {
+    clientId: row.clientId,
+    startedAt: row.startedAt,
+    endedAt: row.endedAt,
+    mushroomCount: row.mushroomCount,
+    distanceMeters: row.distanceMeters,
+    points,
+    updatedAt: row.updatedAt,
+    dirty: row.dirty,
+    deleted: row.deleted,
+    ownerId: row.ownerId,
+  };
+}
+
+export function getTrips(ownerId?: string | null): StoredTrip[] {
+  const rows = ownerId
+    ? db.getAllSync(
+      `SELECT clientId, startedAt, endedAt, mushroomCount, distanceMeters, pointsJson, updatedAt, dirty, deleted, ownerId
+       FROM trips WHERE deleted = 0 AND (ownerId IS NULL OR ownerId = ?) ORDER BY startedAt DESC`,
+      [ownerId],
+    )
+    : db.getAllSync(
+      `SELECT clientId, startedAt, endedAt, mushroomCount, distanceMeters, pointsJson, updatedAt, dirty, deleted, ownerId
+       FROM trips WHERE deleted = 0 ORDER BY startedAt DESC`,
+    );
+  return (rows as Parameters<typeof readTrip>[0][]).map(readTrip);
+}
+
+export function getActiveTrip(): StoredTrip | null {
+  const row = db.getFirstSync(
+    `SELECT clientId, startedAt, endedAt, mushroomCount, distanceMeters, pointsJson, updatedAt, dirty, deleted, ownerId
+     FROM trips WHERE deleted = 0 AND endedAt IS NULL ORDER BY startedAt DESC LIMIT 1`,
+  ) as Parameters<typeof readTrip>[0] | null;
+  return row ? readTrip(row) : null;
+}
+
+export function saveTrip(trip: StoredTrip): void {
+  db.runSync(
+    `INSERT INTO trips
+      (clientId, startedAt, endedAt, mushroomCount, distanceMeters, pointsJson, updatedAt, dirty, deleted, ownerId)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 1, 0, ?)
+     ON CONFLICT(clientId) DO UPDATE SET
+      startedAt = excluded.startedAt,
+      endedAt = excluded.endedAt,
+      mushroomCount = excluded.mushroomCount,
+      distanceMeters = excluded.distanceMeters,
+      pointsJson = excluded.pointsJson,
+      updatedAt = excluded.updatedAt,
+      dirty = 1,
+      deleted = 0,
+      ownerId = COALESCE(excluded.ownerId, trips.ownerId)`,
+    [
+      trip.clientId,
+      trip.startedAt,
+      trip.endedAt,
+      trip.mushroomCount,
+      trip.distanceMeters,
+      JSON.stringify(trip.points),
+      trip.updatedAt,
+      trip.ownerId,
+    ],
+  );
+  notifyTrips();
+}
+
+export function getDirtyTrips(ownerId: string): StoredTrip[] {
+  const rows = db.getAllSync(
+    `SELECT clientId, startedAt, endedAt, mushroomCount, distanceMeters, pointsJson, updatedAt, dirty, deleted, ownerId
+     FROM trips WHERE dirty = 1 AND ownerId = ? ORDER BY updatedAt ASC LIMIT 40`,
+    [ownerId],
+  ) as Parameters<typeof readTrip>[0][];
+  return rows.map(readTrip);
+}
+
+export function claimUnownedTrips(ownerId: string): void {
+  db.runSync(`UPDATE trips SET ownerId = ?, dirty = 1 WHERE ownerId IS NULL`, [ownerId]);
+}
+
+export function upsertRemoteTrip(trip: StoredTrip): void {
+  db.runSync(
+    `INSERT INTO trips
+      (clientId, startedAt, endedAt, mushroomCount, distanceMeters, pointsJson, updatedAt, dirty, deleted, ownerId)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+     ON CONFLICT(clientId) DO UPDATE SET
+      startedAt = excluded.startedAt,
+      endedAt = excluded.endedAt,
+      mushroomCount = excluded.mushroomCount,
+      distanceMeters = excluded.distanceMeters,
+      pointsJson = excluded.pointsJson,
+      updatedAt = excluded.updatedAt,
+      dirty = 0,
+      deleted = excluded.deleted,
+      ownerId = excluded.ownerId
+     WHERE excluded.updatedAt >= trips.updatedAt`,
+    [
+      trip.clientId,
+      trip.startedAt,
+      trip.endedAt,
+      trip.mushroomCount,
+      trip.distanceMeters,
+      JSON.stringify(trip.points),
+      trip.updatedAt,
+      trip.deleted,
+      trip.ownerId,
+    ],
+  );
+  notifyTrips();
 }

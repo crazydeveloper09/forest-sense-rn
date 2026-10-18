@@ -74,7 +74,7 @@ export async function createPremiumCheckout(installationId, accountUserId) {
       {
         price_data: {
           currency: "pln",
-          unit_amount: 1500,
+          unit_amount: 2500,
           recurring: { interval: "month" },
           product_data: {
             name: "Forest Sense Premium",

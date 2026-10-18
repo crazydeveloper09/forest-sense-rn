@@ -16,6 +16,8 @@ import WeatherMapScreen from './src/screens/WeatherMapScreen';
 import { initializeAppStorage } from './src/storage';
 import { startAutoSync } from './src/sync/observations';
 import { colors } from './src/theme';
+import { registerRemotePush } from './src/push/register';
+import { connectLive, disconnectLive } from './src/trips/live';
 
 const AndroidSafeArea: ComponentType<ViewProps> = Platform.OS === 'android'
   ? require('react-native/Libraries/Components/SafeAreaView/RCTSafeAreaViewNativeComponent').default
@@ -55,6 +57,20 @@ function App() {
     return startAutoSync();
   }, [user, isPremium]);
 
+  useEffect(() => {
+    if (!user) return;
+    void registerRemotePush().catch(() => undefined);
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || !isPremium) {
+      disconnectLive();
+      return;
+    }
+    connectLive(user.displayName);
+    return () => disconnectLive();
+  }, [user, isPremium]);
+
   const renderScreen = () => {
     switch (activeTab) {
       case 'map':
@@ -66,7 +82,7 @@ function App() {
       case 'history':
         return <HistoryScreen isPremium={isPremium} />;
       case 'settings':
-        return <SettingsScreen />;
+        return <SettingsScreen isPremium={isPremium} />;
       default:
         return <MapScreen />;
     }

@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { ApiError } from '../api/http';
 import { decryptUtf8 } from '../crypto/e2e';
 import { fetchSession, logoutAccount, type SessionPayload } from './api';
+import { unregisterRemotePush } from '../push/register';
 import {
   clearSession,
   getCurrentProfile,
@@ -78,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthVisible(false);
     },
     logout: async () => {
+      await unregisterRemotePush();
       try {
         await logoutAccount();
       } catch {
