@@ -3,6 +3,7 @@ import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View } from 
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import RecognitionAlternatives from '../components/ai-recognition/RecognitionAlternatives';
 import RecognitionPhotoPicker from '../components/ai-recognition/RecognitionPhotoPicker';
+import RecognitionQuiz from '../components/ai-recognition/RecognitionQuiz';
 import RecognitionQuotaPanel from '../components/ai-recognition/RecognitionQuotaPanel';
 import RecognitionResultCard from '../components/ai-recognition/RecognitionResultCard';
 import RecognitionSafetyNotice from '../components/ai-recognition/RecognitionSafetyNotice';
@@ -16,7 +17,9 @@ const COMPACT_PHOTO = 220;
 export default function AIRecognitionScreen({ adsEnabled, isPremium }: Props) {
   const { state, actions } = useAIRecognition(adsEnabled, isPremium);
   const hasPhoto = Boolean(state.imageUri);
-  const showResult = Boolean(state.result || state.isAnalyzing || state.analysisError);
+  const showQuiz = state.quizStep != null;
+  const showResult = !showQuiz && Boolean(state.result || state.isAnalyzing || state.analysisError);
+  const showSheet = showQuiz || showResult;
   const [expandedPhoto, setExpandedPhoto] = useState(0);
   const photoHeight = useRef(new Animated.Value(0)).current;
   const resultProgress = useRef(new Animated.Value(0)).current;
@@ -34,13 +37,13 @@ export default function AIRecognitionScreen({ adsEnabled, isPremium }: Props) {
 
   useEffect(() => {
     Animated.timing(resultProgress, {
-      toValue: showResult ? 1 : 0,
+      toValue: showSheet ? 1 : 0,
       duration: 380,
-      delay: showResult ? 120 : 0,
+      delay: showSheet ? 120 : 0,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
-  }, [resultProgress, showResult]);
+  }, [resultProgress, showSheet]);
 
   return (
     <View style={styles.screen}>
@@ -72,9 +75,9 @@ export default function AIRecognitionScreen({ adsEnabled, isPremium }: Props) {
           <RecognitionPhotoPicker imageUri={state.imageUri} />
         </Animated.View>
         <Animated.View
-          pointerEvents={showResult ? 'auto' : 'none'}
+          pointerEvents={showSheet ? 'auto' : 'none'}
           style={[
-            showResult ? styles.result : styles.resultHidden,
+            showSheet ? styles.result : styles.resultHidden,
             {
               opacity: resultProgress,
               transform: [{
@@ -87,6 +90,9 @@ export default function AIRecognitionScreen({ adsEnabled, isPremium }: Props) {
           ]}
         >
           <ScrollView style={styles.resultScroll} contentContainerStyle={styles.resultContent} keyboardShouldPersistTaps="handled">
+            {showQuiz && state.quizStep != null ? (
+              <RecognitionQuiz step={state.quizStep} onAnswer={actions.answerQuiz} onCancel={actions.cancelQuiz} />
+            ) : null}
             <RecognitionResultCard
               result={state.result}
               isAnalyzing={state.isAnalyzing}
@@ -102,7 +108,7 @@ export default function AIRecognitionScreen({ adsEnabled, isPremium }: Props) {
           </ScrollView>
         </Animated.View>
       </View>
-      {showResult ? null : dockNode()}
+      {showSheet ? null : dockNode()}
     </View>
   );
 

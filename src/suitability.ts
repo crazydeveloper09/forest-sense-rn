@@ -35,6 +35,10 @@ type WeatherPoint = {
     time?: string[];
     precipitation?: Array<number | null>;
   };
+  daily?: {
+    time?: string[];
+    precipitation_sum?: Array<number | null>;
+  };
 };
 type SoilGridResponse = {
   properties?: {
@@ -45,7 +49,8 @@ type SoilGridResponse = {
   };
 };
 
-const TIMEOUT_MS = 12_000;
+const TIMEOUT_MS = 20_000;
+const WEATHER_SAMPLE_SIZE = 3;
 const FREE_GRID_SIZE = 8;
 const PREMIUM_GRID_SIZE = 10;
 const soilCache = new Map<string, Promise<SoilProperties | null>>();
@@ -187,6 +192,11 @@ function getSoilMoisture(point: WeatherPoint): number | null {
 }
 
 function sumRecentRain(point: WeatherPoint): number | null {
+  const daily = point.daily?.precipitation_sum;
+  if (daily?.length) {
+    const past = daily.length > 1 ? daily.slice(0, -1) : daily;
+    return past.reduce<number>((sum, value) => sum + (value ?? 0), 0);
+  }
   const precipitation = point.hourly?.precipitation;
   if (!precipitation?.length) return null;
   const currentTime = point.current?.time?.slice(0, 13);
@@ -258,13 +268,14 @@ export async function fetchSuitabilityGrid(viewport: MapViewport, detailed = fal
   const coordinates = grid.map(({ latitude, longitude }) => ({ latitude, longitude }));
   const latitudeStep = Math.min(Math.max(viewport.latitudeDelta, 0.002), 60) / gridSize;
   const longitudeStep = Math.min(Math.max(viewport.longitudeDelta, 0.002), 120) / gridSize;
+  const samples = buildGrid(viewport, WEATHER_SAMPLE_SIZE).map(({ latitude, longitude }) => ({ latitude, longitude }));
   const url = new URL('https://api.open-meteo.com/v1/forecast');
-  url.searchParams.set('latitude', coordinates.map((point) => point.latitude.toFixed(5)).join(','));
-  url.searchParams.set('longitude', coordinates.map((point) => point.longitude.toFixed(5)).join(','));
+  url.searchParams.set('latitude', samples.map((point) => point.latitude.toFixed(5)).join(','));
+  url.searchParams.set('longitude', samples.map((point) => point.longitude.toFixed(5)).join(','));
   url.searchParams.set('current', 'temperature_2m,soil_moisture_0_to_1cm,soil_moisture_9_to_27cm');
-  url.searchParams.set('hourly', 'precipitation');
-  url.searchParams.set('past_hours', '72');
-  url.searchParams.set('forecast_hours', '1');
+  url.searchParams.set('daily', 'precipitation_sum');
+  url.searchParams.set('past_days', '3');
+  url.searchParams.set('forecast_days', '1');
   url.searchParams.set('timezone', 'auto');
 
   const weatherResponse = await fetchJson<WeatherPoint | WeatherPoint[]>(url);
@@ -272,9 +283,7 @@ export async function fetchSuitabilityGrid(viewport: MapViewport, detailed = fal
   if (!returnedPoints.length) {
     throw new Error('Environmental forecast returned no locations');
   }
-  const weatherPoints = returnedPoints.length === coordinates.length
-    ? returnedPoints
-    : coordinates.map((coordinate) => nearestWeatherPoint(returnedPoints, coordinate));
+  const weatherPoints = coordinates.map((coordinate) => nearestWeatherPoint(returnedPoints, coordinate));
 
   // SoilGrids is static, unlike weather. Sample the four corners and center to reduce calls;
   // each map cell uses the nearest sampled soil profile.

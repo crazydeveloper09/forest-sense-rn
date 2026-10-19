@@ -37,7 +37,10 @@ export async function fetchWeatherData(latitude: number, longitude: number): Pro
   url.searchParams.set('current', 'temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,weather_code');
   url.searchParams.set('timezone', 'auto');
 
-  const response = await fetch(url.toString());
+  let response = await fetch(url.toString());
+  if (!response.ok) {
+    response = await fetch(url.toString());
+  }
   if (!response.ok) {
     throw new Error(`Weather request failed: ${response.status}`);
   }

@@ -190,7 +190,7 @@ export function useWeatherMap(isPremium = false) {
     const alreadyLoaded = !regionMeaningfullyChanged(lastLoadedViewportRef.current, readable);
     const alreadyLoading = inFlightViewportRef.current != null
       && !regionMeaningfullyChanged(inFlightViewportRef.current, readable);
-    if (alreadyLoading || (!force && alreadyLoaded)) return;
+    if (!force && (alreadyLoading || alreadyLoaded)) return;
     const covered = viewportForPhone(readable, mapSizeRef.current.width, mapSizeRef.current.height);
     lastModelViewportRef.current = covered;
     void refreshWeather(readable.latitude, readable.longitude);
@@ -342,23 +342,23 @@ export function useWeatherMap(isPremium = false) {
     if (lastGoodConditionsKeyRef.current === notificationKey) return;
     lastGoodConditionsKeyRef.current = notificationKey;
 
-    void import('expo-notifications')
-      .then((Notifications) => {
-        return Notifications.requestPermissionsAsync().then(({ status }) => {
-          if (status !== 'granted') return;
-          return Notifications.scheduleNotificationAsync({
-            content: {
-              title: 'Dobry moment na grzyby',
-              body: `Warunki są sprzyjające: ocena ${summary.score}/100, ${weather.temperature.toFixed(1)}°C, wilgotność ${weather.humidity}%`,
-            },
-            trigger: {
-              type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-              seconds: 5,
-            },
-          });
-        });
-      })
-      .catch(() => undefined);
+    // void import('expo-notifications')
+    //   .then((Notifications) => {
+    //     return Notifications.requestPermissionsAsync().then(({ status }) => {
+    //       if (status !== 'granted') return;
+    //       return Notifications.scheduleNotificationAsync({
+    //         content: {
+    //           title: 'Dobry moment na grzyby',
+    //           body: `Warunki są sprzyjające: ocena ${summary.score}/100, ${weather.temperature.toFixed(1)}°C, wilgotność ${weather.humidity}%`,
+    //         },
+    //         trigger: {
+    //           type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+    //           seconds: 5,
+    //         },
+    //       });
+    //     });
+    //   })
+    //   .catch(() => undefined);
   }, [isPremium, summary, weather]);
 
   const potentialSpecies = useMemo(() => findPotentialSpecies(summary), [summary]);

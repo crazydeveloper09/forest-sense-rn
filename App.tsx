@@ -16,7 +16,6 @@ import WeatherMapScreen from './src/screens/WeatherMapScreen';
 import { initializeAppStorage } from './src/storage';
 import { startAutoSync } from './src/sync/observations';
 import { colors } from './src/theme';
-import { registerRemotePush } from './src/push/register';
 import { connectLive, disconnectLive } from './src/trips/live';
 
 const AndroidSafeArea: ComponentType<ViewProps> = Platform.OS === 'android'
@@ -57,10 +56,11 @@ function App() {
     return startAutoSync();
   }, [user, isPremium]);
 
-  useEffect(() => {
-    if (!user) return;
-    void registerRemotePush().catch(() => undefined);
-  }, [user]);
+  // Powiadomienia wyłączone na czas testów w Expo Go.
+  // useEffect(() => {
+  //   if (!user) return;
+  //   void registerRemotePush().catch(() => undefined);
+  // }, [user]);
 
   useEffect(() => {
     if (!user || !isPremium) {

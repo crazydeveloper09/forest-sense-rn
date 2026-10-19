@@ -187,7 +187,7 @@ async function handleRequest(request, response) {
     ? await reserveAccountRecognition(account.id, body.installationId)
     : reserveRecognition(body.installationId);
   try {
-    const identification = await identifyMushroomImage(imageBase64, mimeType);
+    const identification = await identifyMushroomImage(imageBase64, mimeType, body.traits);
     return sendJson(response, 200, {
       identification,
       usage: account

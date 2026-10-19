@@ -71,17 +71,55 @@ function isCancelledRequest(error) {
   return status === 499 || status === "CANCELLED";
 }
 
-async function requestIdentification(imageBase64, mimeType) {
+const TRAIT_NOTES = {
+  underside: {
+    A: "spód kapelusza: blaszki",
+    B: "spód kapelusza: rurki",
+    C: "spód kapelusza: kolce",
+    D: "spód kapelusza: gładki albo brak kapelusza",
+  },
+  cap: {
+    A: "kształt kapelusza: wypukły",
+    B: "kształt kapelusza: płaski",
+    C: "kształt kapelusza: lejkowaty",
+    D: "kształt kapelusza: kulisty albo zamknięty",
+  },
+  stem: {
+    A: "trzon: z pierścieniem",
+    B: "trzon: z pochwą u podstawy",
+    C: "trzon: gładki, bez pierścienia i pochwy",
+    D: "trzonu nie widać",
+  },
+  place: {
+    A: "miejsce: las iglasty",
+    B: "miejsce: las liściasty",
+    C: "miejsce: na drewnie albo pniu",
+    D: "miejsce: łąka, trawnik albo pole",
+  },
+};
 
+export function traitNotes(traits) {
+  if (!traits || typeof traits !== "object") return [];
+  return Object.entries(TRAIT_NOTES).flatMap(([key, options]) => {
+    const choice = String(traits[key] ?? "").toUpperCase();
+    return options[choice] ? [options[choice]] : [];
+  });
+}
+
+async function requestIdentification(imageBase64, mimeType, traits) {
+  const notes = traitNotes(traits);
   const prompt = [
     "You are a cautious visual assistant for mushroom identification. Analyze the supplied photo.",
     "Return only the requested JSON fields. Do not claim certainty from an image alone.",
     'If the image is not clearly a mushroom, set identified=false, confidence=0, name="Nie rozpoznano" and explain why.',
     "If it might be a mushroom but visual details are insufficient, keep confidence at or below 35 and state that it cannot be identified reliably.",
     "For an identified candidate, use the common Polish name when known, give a concise visible-feature description, and only provide habitat if it can be described as general species knowledge. Do not infer the actual location or habitat from the photo.",
-    "Confidence is a subjective visual similarity estimate, not a calibrated probability. Keep it conservative. Give up to 3 alternatives.",
+    notes.length
+      ? `The observer answered a short field questionnaire. Treat these notes as unverified and use them only when they agree with the photo: ${notes.join("; ")}.`
+      : "",
+    "Confidence is a subjective visual similarity estimate, not a calibrated probability. Keep it conservative. Do not raise confidence above 70 from the questionnaire alone. Give up to 3 alternatives.",
     "Never say that a mushroom is safe to eat. Explicitly say expert verification is required before handling or consumption.",
-  ].join(" ");
+  ].filter(Boolean).join(" ");
 
   const interaction = await gemini.interactions.create({
     model: MODEL,
@@ -103,18 +141,18 @@ async function requestIdentification(imageBase64, mimeType) {
   return normalizeIdentification(JSON.parse(interaction.output_text));
 }
 
-export async function identifyMushroomImage(imageBase64, mimeType) {
+export async function identifyMushroomImage(imageBase64, mimeType, traits) {
   if (!gemini)
     throw new Error(
       "Serwer AI nie ma ustawionego GEMINI_API_KEY. Skonfiguruj klucz po stronie API.",
     );
 
   try {
-    return await requestIdentification(imageBase64, mimeType);
+    return await requestIdentification(imageBase64, mimeType, traits);
   } catch (error) {
     if (!isCancelledRequest(error)) throw error;
     try {
-      return await requestIdentification(imageBase64, mimeType);
+      return await requestIdentification(imageBase64, mimeType, traits);
     } catch (retryError) {
       if (!isCancelledRequest(retryError)) throw retryError;
       const cancelled = new Error(

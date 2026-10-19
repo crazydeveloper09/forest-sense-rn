@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { identifyMushroomImage, type MushroomIdentification } from '../../ai';
+import { TRAIT_QUESTIONS, type TraitAnswers, type TraitChoice } from '../../ai/traits';
 import {
   BillingApiError,
   claimDevelopmentReward,
@@ -27,6 +28,7 @@ type RecognitionState = {
   adLoading: boolean;
   locationLabel: string;
   saved: boolean;
+  quizStep: number | null;
 };
 
 export function useAIRecognition(adsEnabled: boolean, isPremium: boolean) {
@@ -41,6 +43,9 @@ export function useAIRecognition(adsEnabled: boolean, isPremium: boolean) {
   const [adLoading, setAdLoading] = useState(false);
   const [locationLabel, setLocationLabel] = useState('Pobieranie lokalizacji…');
   const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [pendingPhoto, setPendingPhoto] = useState<{ base64: string; mimeType: string } | null>(null);
+  const [quizStep, setQuizStep] = useState<number | null>(null);
+  const [quizAnswers, setQuizAnswers] = useState<TraitAnswers>({});
 
   useEffect(() => {
     let isMounted = true;
@@ -88,22 +93,13 @@ export function useAIRecognition(adsEnabled: boolean, isPremium: boolean) {
     };
   }, []);
 
-  const analyzeImage = async (base64: string | null | undefined, mimeType: string | null | undefined) => {
+  const analyzeImage = async (base64: string, mimeType: string, traits: TraitAnswers) => {
     setResult(null);
     setAnalysisError(null);
     setSaved(false);
-    if (usage && !usage.canRecognize) {
-      setAnalysisError('Wykorzystano dostępny limit rozpoznań. Obejrzyj reklamę, aby odblokować jedno dodatkowe rozpoznanie.');
-      return;
-    }
-    if (!base64) {
-      setAnalysisError('Nie udało się odczytać zdjęcia. Wybierz je ponownie lub zrób nowe.');
-      return;
-    }
-
     setIsAnalyzing(true);
     try {
-      const response = await identifyMushroomImage(base64, mimeType || 'image/jpeg');
+      const response = await identifyMushroomImage(base64, mimeType, traits);
       setResult(response.identification);
       setUsage(rememberUsage(response.usage));
     } catch (error) {
@@ -114,15 +110,59 @@ export function useAIRecognition(adsEnabled: boolean, isPremium: boolean) {
     }
   };
 
+  const beginQuiz = (base64: string | null | undefined, mimeType: string | null | undefined, uri: string) => {
+    setResult(null);
+    setSaved(false);
+    setAnalysisError(null);
+    setImageUri(uri);
+    if (usage && !usage.canRecognize) {
+      setPendingPhoto(null);
+      setQuizStep(null);
+      setAnalysisError('Wykorzystano dostępny limit rozpoznań. Obejrzyj reklamę, aby odblokować jedno dodatkowe rozpoznanie.');
+      return;
+    }
+    if (!base64) {
+      setPendingPhoto(null);
+      setQuizStep(null);
+      setAnalysisError('Nie udało się odczytać zdjęcia. Wybierz je ponownie lub zrób nowe.');
+      return;
+    }
+    setPendingPhoto({ base64, mimeType: mimeType || 'image/jpeg' });
+    setQuizAnswers({});
+    setQuizStep(0);
+  };
+
+  const answerQuiz = (choice: TraitChoice) => {
+    const step = quizStep;
+    const question = step == null ? null : TRAIT_QUESTIONS[step];
+    const photo = pendingPhoto;
+    if (step == null || !question || !photo) return;
+    const answers = { ...quizAnswers, [question.id]: choice };
+    setQuizAnswers(answers);
+    if (step < TRAIT_QUESTIONS.length - 1) {
+      setQuizStep(step + 1);
+      return;
+    }
+    setPendingPhoto(null);
+    setQuizStep(null);
+    void analyzeImage(photo.base64, photo.mimeType, answers);
+  };
+
+  const cancelQuiz = () => {
+    setPendingPhoto(null);
+    setQuizStep(null);
+    setQuizAnswers({});
+    setImageUri(null);
+  };
+
   const openCamera = async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) return;
     const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.7, allowsEditing: true, base64: true });
     if (result.canceled || !result.assets[0]) return;
     const asset = result.assets[0];
-    setImageUri(asset.uri);
     setSourceMode('camera');
-    await analyzeImage(asset.base64, asset.mimeType);
+    beginQuiz(asset.base64, asset.mimeType, asset.uri);
   };
 
   const openGallery = async () => {
@@ -131,9 +171,8 @@ export function useAIRecognition(adsEnabled: boolean, isPremium: boolean) {
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7, allowsEditing: true, base64: true });
     if (result.canceled || !result.assets[0]) return;
     const asset = result.assets[0];
-    setImageUri(asset.uri);
     setSourceMode('gallery');
-    await analyzeImage(asset.base64, asset.mimeType);
+    beginQuiz(asset.base64, asset.mimeType, asset.uri);
   };
 
   const watchRewardedAd = async () => {
@@ -216,7 +255,8 @@ export function useAIRecognition(adsEnabled: boolean, isPremium: boolean) {
     adLoading,
     locationLabel,
     saved,
+    quizStep,
   };
 
-  return { state, actions: { openCamera, openGallery, watchRewardedAd, saveCurrentObservation } };
+  return { state, actions: { openCamera, openGallery, watchRewardedAd, saveCurrentObservation, answerQuiz, cancelQuiz } };
 }

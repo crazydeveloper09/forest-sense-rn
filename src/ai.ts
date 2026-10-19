@@ -1,3 +1,4 @@
+import type { TraitAnswers } from './ai/traits';
 import { BillingApiError, getInstallationId, type UsageStatus } from './billing';
 
 export type MushroomCandidate = {
@@ -24,6 +25,7 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_AI_API_URL?.replace(/\/$/, '');
 export async function identifyMushroomImage(
   base64: string,
   mimeType: string,
+  traits: TraitAnswers = {},
 ): Promise<IdentificationResponse> {
   if (!API_BASE_URL) {
     throw new Error('Brak adresu API. Ustaw EXPO_PUBLIC_AI_API_URL w pliku .env i uruchom ponownie Expo.');
@@ -35,7 +37,7 @@ export async function identifyMushroomImage(
     response = await fetch(`${API_BASE_URL}/identify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ imageBase64: base64, mimeType, installationId }),
+      body: JSON.stringify({ imageBase64: base64, mimeType, installationId, traits }),
     });
   } catch {
     throw new Error(
