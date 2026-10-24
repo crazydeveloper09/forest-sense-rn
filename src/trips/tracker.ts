@@ -26,9 +26,35 @@ function distanceMeters(from: TripPoint, to: Pick<TripPoint, 'latitude' | 'longi
   return 6371000 * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
 }
 
+const MIN_STEP_METERS = 8;
+const MAX_WALK_METERS_PER_SECOND = 4.5;
+const MAX_ACCURACY_METERS = 40;
+const MIN_FIX_GAP_MS = 3000;
+
 function persist(trip: StoredTrip): void {
   saveTrip({ ...trip, updatedAt: new Date().toISOString(), ownerId: trip.ownerId ?? getCurrentUserId() });
   emit();
+}
+
+function fixTime(position: Location.LocationObject, fallback: number): number {
+  const stamp = Number(position.timestamp);
+  return Number.isFinite(stamp) && stamp > 0 ? stamp : fallback;
+}
+
+function isGpsFix(position: Location.LocationObject): boolean {
+  if (position.mocked) return false;
+  const { accuracy, altitude } = position.coords;
+  if (accuracy == null || accuracy > MAX_ACCURACY_METERS) return false;
+  return altitude != null;
+}
+
+function isUsableFix(position: Location.LocationObject, previous: TripPoint | undefined, now: number): boolean {
+  if (!isGpsFix(position)) return false;
+  if (!previous) return true;
+  const step = distanceMeters(previous, position.coords);
+  if (step < MIN_STEP_METERS) return false;
+  const elapsedMs = Math.max(now - Date.parse(previous.recordedAt), MIN_FIX_GAP_MS);
+  return step / (elapsedMs / 1000) <= MAX_WALK_METERS_PER_SECOND;
 }
 
 async function ensureWatch(): Promise<void> {
@@ -36,21 +62,26 @@ async function ensureWatch(): Promise<void> {
   const { status } = await Location.requestForegroundPermissionsAsync();
   if (status !== 'granted') return;
   watch = await Location.watchPositionAsync(
-    { accuracy: Location.Accuracy.Balanced, distanceInterval: 12, timeInterval: 5000 },
+    {
+      accuracy: Location.Accuracy.BestForNavigation,
+      distanceInterval: 8,
+      timeInterval: 3000,
+      mayShowUserSettingsDialog: false,
+    },
     (position) => {
       const trip = getActiveTrip();
       if (!trip) return;
-      const now = Date.now();
-      if (now - lastFixAt < 4000) return;
+      const now = fixTime(position, Date.now());
+      if (now - lastFixAt < MIN_FIX_GAP_MS) return;
+      const previous = trip.points[trip.points.length - 1];
+      if (!isUsableFix(position, previous, now)) return;
       lastFixAt = now;
       const point: TripPoint = {
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
-        recordedAt: new Date(position.timestamp).toISOString(),
+        recordedAt: new Date(now).toISOString(),
       };
-      const previous = trip.points[trip.points.length - 1];
       const step = previous ? distanceMeters(previous, point) : 0;
-      if (previous && step < 8) return;
       persist({
         ...trip,
         distanceMeters: trip.distanceMeters + step,
@@ -60,6 +91,18 @@ async function ensureWatch(): Promise<void> {
   );
 }
 
+async function readStartPoint(
+  origin: { latitude: number; longitude: number } | null | undefined,
+  recordedAt: string,
+): Promise<TripPoint | null> {
+  if (origin && Number.isFinite(origin.latitude) && Number.isFinite(origin.longitude)) {
+    return { latitude: origin.latitude, longitude: origin.longitude, recordedAt };
+  }
+  const last = await Location.getLastKnownPositionAsync({ maxAge: 30_000, requiredAccuracy: 80 }).catch(() => null);
+  if (!last) return null;
+  return { latitude: last.coords.latitude, longitude: last.coords.longitude, recordedAt };
+}
+
 export async function startTrip(origin?: { latitude: number; longitude: number } | null): Promise<StoredTrip> {
   const existing = getActiveTrip();
   if (existing) {
@@ -67,19 +110,21 @@ export async function startTrip(origin?: { latitude: number; longitude: number }
     return existing;
   }
   const now = new Date().toISOString();
+  const start = await readStartPoint(origin, now);
   const trip: StoredTrip = {
     clientId: Crypto.randomUUID(),
     startedAt: now,
     endedAt: null,
     mushroomCount: 0,
     distanceMeters: 0,
-    points: origin ? [{ ...origin, recordedAt: now }] : [],
+    points: start ? [start] : [],
     updatedAt: now,
     dirty: 1,
     deleted: 0,
     ownerId: getCurrentUserId(),
   };
   persist(trip);
+  lastFixAt = Date.now();
   await ensureWatch();
   return trip;
 }
